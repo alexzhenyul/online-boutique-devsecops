@@ -1,0 +1,16 @@
+# Ignore zip files
+*.zip
+
+# Ignore logs and temp files
+*.log
+*.tmp
+*.bak
+
+# Ignore local Terraform state
+*.tfstate
+*.tfstate.backup
+
+# Ignore AWS CLI local files
+.aws/
+
+
