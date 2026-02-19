@@ -44,6 +44,7 @@ override.tf.json
 # .terraform.lock.hcl
 tfplan.txt  
 .terraform.lock.hcl
+terrascan.tar.gz    
 
 # AWS credentials
 .aws/
