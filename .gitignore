@@ -10,5 +10,41 @@
 *.tfstate
 *.tfstate.backup
 
-# Ignore AWS CLI local files
+# Ignore AWS CLI & kubectl local files
+infra/scripts/aws/
+infra/scripts/kubectl
+
+# Local .terraform directories
+**/.terraform/*
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Terraform plan files
+tfplan
+*.tfplan
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Terraform variable files (may contain secrets)
+*.tfvars
+*.tfvars.json
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Terraform lock file (optional, some teams commit this)
+# .terraform.lock.hcl
+tfplan.txt  
+.terraform.lock.hcl
+
+# AWS credentials
 .aws/
+credentials
