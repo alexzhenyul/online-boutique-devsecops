@@ -16,7 +16,8 @@ pipeline {
 
                     def detectedService = ''
                     changedFiles.split('\n').each { file ->
-                        def match = file =~ /^src\/([^\/]+)\/.+/
+                        // Updated to match: app/microservices-demo/src/<service>/...
+                        def match = file =~ /^app\/microservices-demo\/src\/([^\/]+)\/.+/
                         if (match && !detectedService) {
                             detectedService = match[0][1]
                         }
