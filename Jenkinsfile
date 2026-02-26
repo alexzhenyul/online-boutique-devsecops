@@ -98,6 +98,17 @@ pipeline {
                     env.ECR_IMAGE_SHA    = "${base}:${env.GIT_SHORT}"
                     env.ECR_IMAGE_LATEST = "${base}:latest"
 
+                    def dockerfilePath = ''
+                    if (fileExists("${env.SERVICE_PATH}/Dockerfile")) {
+                        dockerfilePath = "${env.SERVICE_PATH}/Dockerfile"
+                    } else if (fileExists("${env.SERVICE_PATH}/src/Dockerfile")) {
+                        dockerfilePath = "${env.SERVICE_PATH}/src/Dockerfile"
+                    } else {
+                        error "No Dockerfile found for ${env.MICROSERVICE}"
+                    }
+                    env.DOCKERFILE_PATH = dockerfilePath
+                    env.DOCKERFILE_DIR  = dockerfilePath.replace('/Dockerfile', '')
+
                     echo """
                     ╔══════════════════════════════════════════════╗
                     ║  Detected microservice : ${env.MICROSERVICE}
@@ -105,6 +116,7 @@ pipeline {
                     ║  Previous version      : ${rawTag}
                     ║  New version           : ${env.SEMVER}
                     ║  Git SHA               : ${env.GIT_SHORT}
+                    ║  Dockerfile            : ${env.DOCKERFILE_PATH}
                     ╚══════════════════════════════════════════════╝
                     """
                 }
@@ -264,13 +276,13 @@ pipeline {
             }
             steps {
                 script {
-                    echo "🔍 Running Hadolint on: app/microservices-demo/src/${env.MICROSERVICE}/Dockerfile"
+                    echo "Running Hadolint on: ${env.DOCKERFILE_PATH}"
 
                     def exitCode = sh(
                         script: """
                             hadolint \
                                 --format json \
-                                app/microservices-demo/src/${env.MICROSERVICE}/Dockerfile \
+                                ${env.DOCKERFILE_PATH} \
                                 > hadolint-report.json
                         """,
                         returnStatus: true
@@ -316,12 +328,12 @@ pipeline {
                             --label "org.opencontainers.image.version=${env.SEMVER}" \
                             --label "org.opencontainers.image.revision=${env.GIT_COMMIT}" \
                             --label "org.opencontainers.image.created=\$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-                            --label "org.opencontainers.image.source=${env.GIT_URL}" \
                             --label "service=${env.MICROSERVICE}" \
                             -t ${env.ECR_IMAGE} \
                             -t ${env.ECR_IMAGE_SHA} \
                             -t ${env.ECR_IMAGE_LATEST} \
-                            ${env.SERVICE_PATH}
+                            -f ${env.DOCKERFILE_PATH} \
+                            ${env.DOCKERFILE_DIR}
                     """
 
                     echo "Built tags:"

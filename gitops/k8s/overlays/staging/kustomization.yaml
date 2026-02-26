@@ -27,6 +27,14 @@ images:
   newTag: latest
 - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/shippingservice
   newTag: latest
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/loadgenerator
+    newTag: latest
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/shoppingassistantservice
+    newTag: latest
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/loadgenerator
+    newTag: "1.0.0"
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/shoppingassistantservice
+    newTag: "1.0.0"
 
 commonLabels:
   environment: dev
