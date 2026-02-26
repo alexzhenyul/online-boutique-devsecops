@@ -121,17 +121,17 @@ module "ecr" {
   source = "../../../modules/ecr"
 
   repository_names = [
-    "frontend",
-    "cartservice",
-    "checkoutservice",
-    "currencyservice",
-    "emailservice",
-    "paymentservice",
-    "productcatalogservice",
-    "recommendationservice",
-    "shippingservice",
-    "adservice",
-    "loadgenerator"
+    "online-boutique/frontend",
+    "online-boutique/cartservice",
+    "online-boutique/checkoutservice",
+    "online-boutique/currencyservice",
+    "online-boutique/emailservice",
+    "online-boutique/paymentservice",
+    "online-boutique/productcatalogservice",
+    "online-boutique/recommendationservice",
+    "online-boutique/shippingservice",
+    "online-boutique/adservice",
+    "online-boutique/loadgenerator"
   ]
 
   image_tag_mutability = "IMMUTABLE"
