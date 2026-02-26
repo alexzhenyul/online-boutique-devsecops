@@ -1,30 +1,42 @@
+pipeline {
+    agent any
 
-stage('Detect Changed Services') {
-    steps {
-        script {
+    stages {
 
-            // Get list of changed files in the last commit
-            def changedFiles = sh(
-                script: "git diff --name-only HEAD~1 || true",
-                returnStdout: true
-            ).trim()
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
 
-            echo "Changed files:\n${changedFiles}"
+        stage('Detect Changed Services') {
+            steps {
+                script {
+                    // Get changed files from the last commit
+                    def changedFiles = sh(
+                        script: "git diff --name-only HEAD~1 || true",
+                        returnStdout: true
+                    ).trim()
 
-            def services = []
+                    echo "Changed files:\n${changedFiles}"
 
-            changedFiles.split("\n").each { file ->
-                // Only consider files under app/microservices-demo/
-                if (file.startsWith("app/microservices-demo/")) {
-                    def svc = file.tokenize('/')[2]  // 2 = service folder
-                    services.add(svc)
+                    def services = []
+
+                    changedFiles.split("\n").each { file ->
+                        // Only consider files under app/microservices-demo/src/
+                        if (file.startsWith("app/microservices-demo/src/")) {
+                            // service name is the folder after src/
+                            def svc = file.tokenize('/')[4] // 0=app,1=microservices-demo,2=src,3=service-type?,4=service-name?
+                            services.add(svc)
+                        }
+                    }
+
+                    // Remove duplicates
+                    SERVICES = services.unique()
+
+                    echo "Detected services: ${SERVICES}"
                 }
             }
-
-            // Remove duplicates
-            SERVICES = services.unique()
-
-            echo "Detected services: ${SERVICES}"
         }
     }
 }
