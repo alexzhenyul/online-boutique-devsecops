@@ -103,7 +103,7 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'NVD_KEY', variable: 'NVD_KEY')]) {
                     script {
-                        echo "🔍 Running OWASP Dependency Check on: app/microservices-demo/src/${env.MICROSERVICE}"
+                        echo "Running OWASP Dependency Check on: app/microservices-demo/src/${env.MICROSERVICE}"
 
                         sh "mkdir -p reports"
 
@@ -116,21 +116,24 @@ pipeline {
                                     --format JSON \
                                     --out reports/ \
                                     --failOnCVSS 8 \
-                                    --nvdApiKey \$NVD_KEY
+                                    --data /var/lib/jenkins/dependency-check-data \
+                                    --nvdApiKey \$NVD_KEY \
+                                    --nvdApiDelay 6000 \
+                                    --nvdMaxRetryCount 5
                             """,
                             returnStatus: true
                         )
 
-                    if (exitCode != 0) {
-                        error "OWASP Dependency Check found vulnerabilities with CVSS ≥ 8.0!"
-                    } else {
-                        echo "No critical vulnerabilities found in ${env.MICROSERVICE}"
+                        if (exitCode != 0) {
+                            error "OWASP Dependency Check found vulnerabilities with CVSS ≥ 8.0!"
+                        } else {
+                            echo "No critical vulnerabilities found in ${env.MICROSERVICE}"
+                        }
                     }
-                }
+                }  // ← closes withCredentials
             }
             post {
                 always {
-                    // Publish the HTML report in Jenkins
                     publishHTML(target: [
                         allowMissing         : true,
                         alwaysLinkToLastBuild: true,
@@ -142,8 +145,7 @@ pipeline {
                     archiveArtifacts artifacts: 'reports/dependency-check-report.json', allowEmptyArchive: true
                 }
             }
-        }
-    }    
+        }  
 
         stage('Print Result') {
             steps {
