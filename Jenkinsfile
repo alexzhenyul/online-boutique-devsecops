@@ -10,36 +10,32 @@ pipeline {
             }
         }
 
-        stage('Detect Changed Services') {
-            steps {
-                script {
-                    // Get changed files in the last commit
-                    def changedFiles = sh(
-                        script: "git diff --name-only HEAD~1 || true",
-                        returnStdout: true
-                    ).trim()
+    stage('Detect Changed Services') {
+        steps {
+            script {
+                def changedFiles = sh(
+                    script: "git diff --name-only HEAD~1 || true",
+                    returnStdout: true
+                ).trim()
 
-                    echo "Changed files:\n${changedFiles}"
+                echo "Changed files:\n${changedFiles}"
 
-                    def services = []
+                def services = []
 
-                    changedFiles.split("\n").each { file ->
-                        // Only consider files under app/microservices-demo/src/
-                        if (file.startsWith("app/microservices-demo/src/")) {
-                            // service folder is the first folder under src
-                            def svc = file.tokenize('/')[4] // adjust for your folder depth
-                            services.add(svc)
-                        }
+                changedFiles.split("\n").each { file ->
+                    if (file.startsWith("app/microservices-demo/src/")) {
+                        // Service folder is index 3
+                        def svc = file.tokenize('/')[3]
+                        services.add(svc)
                     }
+                }
 
-                    // Remove duplicates
-                    SERVICES = services.unique()
+                SERVICES = services.unique()
 
-                    if (SERVICES.isEmpty()) {
-                        echo "No services changed in this commit."
-                    } else {
-                        echo "Changed services: ${SERVICES}"
-                    }
+                if (SERVICES.isEmpty()) {
+                    echo "No services changed in this commit."
+                } else {
+                    echo "Changed services: ${SERVICES}"
                 }
             }
         }
