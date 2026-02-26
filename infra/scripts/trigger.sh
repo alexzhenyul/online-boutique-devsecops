@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# ── Repo root (2 levels up from infra/scripts/) ───────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+
 SERVICE=$1
 
 if [ -z "$SERVICE" ]; then
@@ -38,28 +42,44 @@ VALID_SERVICES=(
 
 # Validate service name
 if [[ ! " ${VALID_SERVICES[@]} " =~ " ${SERVICE} " ]]; then
-    echo " Unknown microservice: '${SERVICE}'"
+    echo "Unknown microservice: '${SERVICE}'"
     echo "Run ./trigger.sh without arguments to see available services"
     exit 1
 fi
 
+SERVICE_BASE="${REPO_ROOT}/app/microservices-demo/src/${SERVICE}"
+
 # Verify directory exists
-if [ ! -d "app/microservices-demo/src/${SERVICE}" ]; then
-    echo " Directory not found: app/microservices-demo/src/${SERVICE}"
+if [ ! -d "${SERVICE_BASE}" ]; then
+    echo "Directory not found: ${SERVICE_BASE}"
+    exit 1
+fi
+
+# ── Handle nested Dockerfile (e.g. cartservice/src/Dockerfile) ───
+if [ -f "${SERVICE_BASE}/Dockerfile" ]; then
+    TRIGGER_PATH="${SERVICE_BASE}/.trigger-build"
+elif [ -f "${SERVICE_BASE}/src/Dockerfile" ]; then
+    TRIGGER_PATH="${SERVICE_BASE}/src/.trigger-build"
+else
+    echo "No Dockerfile found for ${SERVICE}"
     exit 1
 fi
 
 echo "======================================"
-echo "  Triggering build for: ${SERVICE}"
+echo "  Repo root  : ${REPO_ROOT}"
+echo "  Triggering : ${SERVICE}"
+echo "  Trigger at : ${TRIGGER_PATH}"
 echo "======================================"
+
+cd "${REPO_ROOT}"
 
 git pull --rebase origin main
 
-touch app/microservices-demo/src/${SERVICE}/.trigger-build
+touch "${TRIGGER_PATH}"
 
-git add app/microservices-demo/src/${SERVICE}/.trigger-build
+git add "${TRIGGER_PATH}"
 git commit -m "fix: trigger CI build for ${SERVICE}"
 git push origin main
 
-echo " Successfully triggered: ${SERVICE}"
-echo " Monitor at: https://github.com/alexzhenyul/online-boutique-devsecops/actions"
+echo "Successfully triggered: ${SERVICE}"
+echo "Monitor at: https://github.com/alexzhenyul/online-boutique-devsecops/actions"
