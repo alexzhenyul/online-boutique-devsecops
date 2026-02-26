@@ -3,48 +3,48 @@ pipeline {
 
     stages {
 
-        stage('Checkout') {
+        stage('Detect Changed Microservice') {
             steps {
-                echo "Checking out code..."
-                checkout scm
+                script {
+                    def changedFiles = sh(
+                        script: "git diff --name-only HEAD~1 HEAD",
+                        returnStdout: true
+                    ).trim()
+
+                    echo "=== Changed Files ==="
+                    echo "${changedFiles}"
+
+                    def detectedService = ''
+                    changedFiles.split('\n').each { file ->
+                        def match = file =~ /^src\/([^\/]+)\/.+/
+                        if (match && !detectedService) {
+                            detectedService = match[0][1]
+                        }
+                    }
+
+                    if (!detectedService) {
+                        echo "No microservice source changes detected. Skipping."
+                        currentBuild.result = 'NOT_BUILT'
+                        return
+                    }
+
+                    env.MICROSERVICE = detectedService
+                    echo "Detected microservice: ${env.MICROSERVICE}"
+                }
             }
         }
 
-    stage('Detect Changed Services') {
-        steps {
-            script {
-                def changedFiles = sh(
-                    script: "git diff --name-only HEAD~1 || true",
-                    returnStdout: true
-                ).trim()
-
-                echo "Changed files:\n${changedFiles}"
-
-                def services = []
-
-                changedFiles.split("\n").each { file ->
-                    if (file.startsWith("app/microservices-demo/src/")) {
-                        // Service folder is index 3
-                        def svc = file.tokenize('/')[3]
-                        services.add(svc)
+        stage('Print Result') {
+            steps {
+                script {
+                    if (!env.MICROSERVICE) {
+                        echo "No microservice was detected."
+                    } else {
+                        echo "Would run pipeline for: ${env.MICROSERVICE}"
                     }
                 }
-
-                SERVICES = services.unique()
-
-                if (SERVICES.isEmpty()) {
-                    echo "No services changed ingit this commit."
-                } else {
-                    echo "Changed services: ${SERVICES}"
-                }
             }
         }
-    }
 
-    post {
-        success {
-            echo "Service detection completed."
-        }
     }
-}
 }
