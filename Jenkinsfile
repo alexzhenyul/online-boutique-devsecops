@@ -12,6 +12,10 @@ pipeline {
 
         // EMAIL
         EMAIL_RECIPIENTS = 'zhenyu.alexl@gmail.com,lzyx0207@gmail.com'
+
+        // GITHUB   
+        GIT_ORG         = 'alexzhenyul'
+        GIT_REPO        = 'online-boutique-devsecops'
     }
 
     stages {
