@@ -24,9 +24,9 @@ images:
 - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/productcatalogservice
   newTag: 1.0.0
 - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/recommendationservice
-  newTag: 0.0.1
+  newTag: 1.0.0
 - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/shippingservice
-  newTag: 0.0.1
+  newTag: 1.0.0
 
 patches:
 - path: replicas-patch.yaml
