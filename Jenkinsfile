@@ -35,6 +35,40 @@ pipeline {
             }
         }
 
+        stage('Secret Scanning - Gitleaks') {
+            when {
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
+            }
+            steps {
+                script {
+                    echo "🔍 Running Gitleaks on: app/microservices-demo/src/${env.MICROSERVICE}"
+
+                    def exitCode = sh(
+                        script: """
+                            gitleaks detect \
+                                --source=app/microservices-demo/src/${env.MICROSERVICE} \
+                                --report-format=json \
+                                --report-path=gitleaks-report.json \
+                                --exit-code=1 \
+                                --no-git
+                        """,
+                        returnStatus: true
+                    )
+
+                    if (exitCode == 1) {
+                        error "❌ Gitleaks found secrets! Check gitleaks-report.json for details."
+                    } else {
+                        echo "✅ No secrets found in ${env.MICROSERVICE}"
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'gitleaks-report.json', allowEmptyArchive: true
+                }
+            }
+        }
+
         stage('Print Result') {
             steps {
                 script {
