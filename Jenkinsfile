@@ -147,6 +147,40 @@ pipeline {
             }
         }  
 
+        stage('Trivy FS Scan') {
+            when {
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
+            }
+            steps {
+                script {
+                    echo "🔍 Running Trivy filesystem scan on: app/microservices-demo/src/${env.MICROSERVICE}"
+
+                    def exitCode = sh(
+                        script: """
+                            trivy fs \
+                                --severity HIGH,CRITICAL \
+                                --exit-code 1 \
+                                --format json \
+                                --output trivy-fs-report.json \
+                                app/microservices-demo/src/${env.MICROSERVICE}
+                        """,
+                        returnStatus: true
+                    )
+
+                    if (exitCode == 1) {
+                        error "Trivy found HIGH/CRITICAL vulnerabilities in filesystem!"
+                    } else {
+                        echo "No HIGH/CRITICAL vulnerabilities found in ${env.MICROSERVICE} filesystem"
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-fs-report.json', allowEmptyArchive: true
+                }
+            }
+        }
+
         stage('Print Result') {
             steps {
                 script {
