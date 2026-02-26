@@ -421,7 +421,10 @@ pipeline {
                             git config user.name  "Jenkins"
 
                             git remote set-url origin https://\${GIT_USER}:\${GIT_TOKEN}@github.com/${env.GIT_ORG}/${env.GIT_REPO}.git
-
+                            
+                            # ── Checkout main branch to avoid detached HEAD ───────
+                            git checkout -B main origin/main
+                            
                             git pull origin main
 
                             # ── Dev: always latest ────────────────────────────────
