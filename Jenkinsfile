@@ -105,6 +105,8 @@ pipeline {
                     script {
                         echo "🔍 Running OWASP Dependency Check on: app/microservices-demo/src/${env.MICROSERVICE}"
 
+                        sh "mkdir -p reports"
+
                         def exitCode = sh(
                             script: """
                                 dependency-check \
