@@ -1,4 +1,3 @@
-cat << 'EOF' > /home/ubuntu/online-boutique/infra/scripts/trigger.sh
 #!/bin/bash
 
 # ── Repo root (2 levels up from infra/scripts/) ───────────
@@ -85,4 +84,3 @@ git push origin main
 
 echo "Successfully triggered: ${SERVICE}"
 echo "Monitor at: https://github.com/alexzhenyul/online-boutique-devsecops/actions"
-EOF
