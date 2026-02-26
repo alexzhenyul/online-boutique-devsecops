@@ -139,6 +139,7 @@ pipeline {
                 }
             }
         }
+
         stage('SAST - SonarQube Analysis') {
             when {
                 expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
@@ -361,43 +362,43 @@ pipeline {
             }
         }
 
-stage('Push to ECR') {
-    when {
-        expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
-    }
-    steps {
-        withCredentials([
-            string(credentialsId: 'aws-access-key-id',     variable: 'AWS_ACCESS_KEY_ID'),
-            string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
-        ]) {
-            script {
-                sh """
-                    export AWS_ACCESS_KEY_ID=\$AWS_ACCESS_KEY_ID
-                    export AWS_SECRET_ACCESS_KEY=\$AWS_SECRET_ACCESS_KEY
-                    export AWS_DEFAULT_REGION=${AWS_REGION}
+        stage('Push to ECR') {
+            when {
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
+            }
+            steps {
+                withCredentials([
+                    string(credentialsId: 'aws-access-key-id',     variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    script {
+                        sh """
+                            export AWS_ACCESS_KEY_ID=\$AWS_ACCESS_KEY_ID
+                            export AWS_SECRET_ACCESS_KEY=\$AWS_SECRET_ACCESS_KEY
+                            export AWS_DEFAULT_REGION=${AWS_REGION}
 
-                    aws ecr get-login-password --region ${AWS_REGION} | \
-                        docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                            aws ecr get-login-password --region ${AWS_REGION} | \
+                                docker login --username AWS --password-stdin ${ECR_REGISTRY}
 
-                    docker push ${env.ECR_IMAGE}
-                """
+                            docker push ${env.ECR_IMAGE}
+                        """
 
-                // Only push additional tags if they were set by semver logic
-                if (env.ECR_IMAGE_SHA) {
-                    sh "docker push ${env.ECR_IMAGE_SHA}"
-                    echo "Pushed SHA tag: ${env.ECR_IMAGE_SHA}"
+                        // Only push additional tags if they were set by semver logic
+                        if (env.ECR_IMAGE_SHA) {
+                            sh "docker push ${env.ECR_IMAGE_SHA}"
+                            echo "Pushed SHA tag: ${env.ECR_IMAGE_SHA}"
+                        }
+
+                        if (env.ECR_IMAGE_LATEST) {
+                            sh "docker push ${env.ECR_IMAGE_LATEST}"
+                            echo "Pushed latest tag: ${env.ECR_IMAGE_LATEST}"
+                        }
+
+                        echo "Successfully pushed: ${env.ECR_IMAGE}"
+                    }
                 }
-
-                if (env.ECR_IMAGE_LATEST) {
-                    sh "docker push ${env.ECR_IMAGE_LATEST}"
-                    echo "Pushed latest tag: ${env.ECR_IMAGE_LATEST}"
-                }
-
-                echo "Successfully pushed: ${env.ECR_IMAGE}"
             }
         }
-    }
-}
 
         stage('Tag Git Commit') {
             when {
@@ -434,10 +435,11 @@ stage('Push to ECR') {
                         ║    • ${env.ECR_IMAGE_LATEST}
                         ╚══════════════════════════════════════════════════════════════╝
                         """
+                        }
                     }
                 }
             }
-        }
 
+        }
     }
 }
