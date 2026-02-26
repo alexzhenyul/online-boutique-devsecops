@@ -1,3 +1,4 @@
+cat << 'EOF' > /home/ubuntu/online-boutique/infra/scripts/trigger.sh
 #!/bin/bash
 
 # ── Repo root (2 levels up from infra/scripts/) ───────────
@@ -75,6 +76,7 @@ cd "${REPO_ROOT}"
 
 git pull --rebase origin main
 
+# Force a change by writing current timestamp
 echo "$(date)" > "${TRIGGER_PATH}"
 
 git add "${TRIGGER_PATH}"
@@ -83,3 +85,4 @@ git push origin main
 
 echo "Successfully triggered: ${SERVICE}"
 echo "Monitor at: https://github.com/alexzhenyul/online-boutique-devsecops/actions"
+EOF
