@@ -1,14 +1,6 @@
 pipeline {
     agent any
 
-    parameters {
-        choice(
-            name: 'VERSION_BUMP',
-            choices: ['patch', 'minor', 'major'],
-            description: 'Select semver bump type: patch (1.0.x), minor (1.x.0), major (x.0.0)'
-        )
-    }
-
     environment {
         // AWS & ECR
         AWS_REGION      = 'ap-southeast-4'
@@ -18,6 +10,8 @@ pipeline {
         // OWASP
         DC_DATA_DIR     = '/var/lib/jenkins/dependency-check-data'
     }
+
+    stages {
 
     stages {
 
@@ -34,7 +28,6 @@ pipeline {
 
                     def detectedService = ''
                     changedFiles.split('\n').each { file ->
-                        // Updated to match: app/microservices-demo/src/<service>/...
                         def match = file =~ /^app\/microservices-demo\/src\/([^\/]+)\/.+/
                         if (match && !detectedService) {
                             detectedService = match[0][1]
@@ -47,15 +40,68 @@ pipeline {
                         return
                     }
 
-                    env.MICROSERVICE  = detectedService
-                    env.SERVICE_PATH  = "app/microservices-demo/src/${detectedService}"
-                    env.IMAGE_TAG     = env.GIT_COMMIT.take(8)
-                    env.ECR_IMAGE     = "${ECR_REGISTRY}/${ECR_REPO_PREFIX}/${detectedService}:${env.IMAGE_TAG}"
+                    env.MICROSERVICE = detectedService
+                    env.SERVICE_PATH = "app/microservices-demo/src/${detectedService}"
+                    env.GIT_SHORT    = env.GIT_COMMIT.take(8)
 
-                    echo "Detected microservice : ${env.MICROSERVICE}"
-                    echo "Service path          : ${env.SERVICE_PATH}"
-                    echo "Image tag              : ${env.IMAGE_TAG}"
-                    echo "ECR image             : ${env.ECR_IMAGE}"
+                    // ── Conventional Commits: auto-detect bump type ───────────
+                    def commitMsg = sh(
+                        script: "git log -1 --pretty=%B HEAD",
+                        returnStdout: true
+                    ).trim()
+
+                    echo "=== Commit Message ==="
+                    echo "${commitMsg}"
+
+                    def bumpType = 'patch' // default
+
+                    if (commitMsg.contains('BREAKING CHANGE:') || commitMsg =~ /^[a-z]+(\(.+\))?!:/) {
+                        bumpType = 'major'
+                    } else if (commitMsg =~ /^feat(\(.+\))?:/) {
+                        bumpType = 'minor'
+                    }
+                    // fix:, perf:, refactor:, chore:, docs:, style:, test: → patch
+
+                    echo "Detected bump type: ${bumpType}"
+
+                    // ── Semver Calculation ────────────────────────────────────
+                    def rawTag = sh(
+                        script: """
+                            git tag --list "${detectedService}/*" \
+                                | sort -t/ -k2 -V \
+                                | tail -1 \
+                                | awk -F/ '{print \$2}'
+                        """,
+                        returnStdout: true
+                    ).trim()
+
+                    if (!rawTag) rawTag = '0.0.0'
+
+                    def (maj, min, pat) = rawTag.tokenize('.').collect { it.toInteger() }
+
+                    switch (bumpType) {
+                        case 'major': maj++; min = 0; pat = 0; break
+                        case 'minor': min++; pat = 0;          break
+                        default:      pat++;                    break
+                    }
+
+                    env.SEMVER    = "${maj}.${min}.${pat}"
+                    env.IMAGE_TAG = env.SEMVER
+
+                    def base             = "${ECR_REGISTRY}/${ECR_REPO_PREFIX}/${detectedService}"
+                    env.ECR_IMAGE        = "${base}:${env.SEMVER}"
+                    env.ECR_IMAGE_SHA    = "${base}:${env.GIT_SHORT}"
+                    env.ECR_IMAGE_LATEST = "${base}:latest"
+
+                    echo """
+                    ╔══════════════════════════════════════════════╗
+                    ║  Detected microservice : ${env.MICROSERVICE}
+                    ║  Commit message type   : ${bumpType}
+                    ║  Previous version      : ${rawTag}
+                    ║  New version           : ${env.SEMVER}
+                    ║  Git SHA               : ${env.GIT_SHORT}
+                    ╚══════════════════════════════════════════════╝
+                    """
                 }
             }
         }
@@ -315,37 +361,43 @@ pipeline {
             }
         }
 
-        stage('Push to ECR') {
-            when {
-                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
-            }
-            steps {
-                withCredentials([
-                    string(credentialsId: 'aws-access-key-id',     variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
-                    script {
-                        sh """
-                            export AWS_ACCESS_KEY_ID=\$AWS_ACCESS_KEY_ID
-                            export AWS_SECRET_ACCESS_KEY=\$AWS_SECRET_ACCESS_KEY
-                            export AWS_DEFAULT_REGION=${AWS_REGION}
+stage('Push to ECR') {
+    when {
+        expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
+    }
+    steps {
+        withCredentials([
+            string(credentialsId: 'aws-access-key-id',     variable: 'AWS_ACCESS_KEY_ID'),
+            string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+        ]) {
+            script {
+                sh """
+                    export AWS_ACCESS_KEY_ID=\$AWS_ACCESS_KEY_ID
+                    export AWS_SECRET_ACCESS_KEY=\$AWS_SECRET_ACCESS_KEY
+                    export AWS_DEFAULT_REGION=${AWS_REGION}
 
-                            aws ecr get-login-password --region ${AWS_REGION} | \
-                                docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                    aws ecr get-login-password --region ${AWS_REGION} | \
+                        docker login --username AWS --password-stdin ${ECR_REGISTRY}
 
-                            docker push ${env.ECR_IMAGE}
-                            docker push ${env.ECR_IMAGE_SHA}
-                            docker push ${env.ECR_IMAGE_LATEST}
-                        """
+                    docker push ${env.ECR_IMAGE}
+                """
 
-                        echo "Successfully pushed:"
-                        echo "  ${env.ECR_IMAGE}"
-                        echo "  ${env.ECR_IMAGE_SHA}"
-                        echo "  ${env.ECR_IMAGE_LATEST}"
-                    }
+                // Only push additional tags if they were set by semver logic
+                if (env.ECR_IMAGE_SHA) {
+                    sh "docker push ${env.ECR_IMAGE_SHA}"
+                    echo "Pushed SHA tag: ${env.ECR_IMAGE_SHA}"
                 }
+
+                if (env.ECR_IMAGE_LATEST) {
+                    sh "docker push ${env.ECR_IMAGE_LATEST}"
+                    echo "Pushed latest tag: ${env.ECR_IMAGE_LATEST}"
+                }
+
+                echo "Successfully pushed: ${env.ECR_IMAGE}"
             }
         }
+    }
+}
 
         stage('Tag Git Commit') {
             when {
