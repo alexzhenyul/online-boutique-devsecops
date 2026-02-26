@@ -10,7 +10,7 @@ images:
 - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/cartservice
   newTag: 1.0.0
 - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/checkoutservice
-  newTag: 1.0.0
+  newTag: 0.0.1
 - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/currencyservice
   newTag: 1.0.0
 - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/emailservice
