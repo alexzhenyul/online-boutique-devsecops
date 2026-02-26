@@ -41,7 +41,7 @@ pipeline {
             }
             steps {
                 script {
-                    echo "🔍 Running Gitleaks on: app/microservices-demo/src/${env.MICROSERVICE}"
+                    echo "Running Gitleaks on: app/microservices-demo/src/${env.MICROSERVICE}"
 
                     def exitCode = sh(
                         script: """
@@ -56,9 +56,9 @@ pipeline {
                     )
 
                     if (exitCode == 1) {
-                        error "❌ Gitleaks found secrets! Check gitleaks-report.json for details."
+                        error "Gitleaks found secrets! Check gitleaks-report.json for details."
                     } else {
-                        echo "✅ No secrets found in ${env.MICROSERVICE}"
+                        echo "No secrets found in ${env.MICROSERVICE}"
                     }
                 }
             }
