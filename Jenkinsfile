@@ -181,6 +181,39 @@ pipeline {
             }
         }
 
+        stage('Hadolint Dockerfile Scan') {
+            when {
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
+            }
+            steps {
+                script {
+                    echo "🔍 Running Hadolint on: app/microservices-demo/src/${env.MICROSERVICE}/Dockerfile"
+
+                    def exitCode = sh(
+                        script: """
+                            hadolint \
+                                --format json \
+                                app/microservices-demo/src/${env.MICROSERVICE}/Dockerfile \
+                                > hadolint-report.json
+                        """,
+                        returnStatus: true
+                    )
+
+                    if (exitCode != 0) {
+                        echo "Hadolint found Dockerfile issues - check hadolint-report.json"
+                        // Use 'error' instead of echo if you want to FAIL the pipeline
+                    } else {
+                        echo "Dockerfile passed Hadolint checks"
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'hadolint-report.json', allowEmptyArchive: true
+                }
+            }
+        }
+
         stage('Print Result') {
             steps {
                 script {
