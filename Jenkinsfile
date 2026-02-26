@@ -237,10 +237,15 @@ pipeline {
             }
             steps {
                 script {
-                    echo "🔨 Building Docker image: ${env.ECR_IMAGE}"
+                    echo "Building Docker image: ${env.ECR_IMAGE}"
 
                     sh """
+                        export DOCKER_BUILDKIT=1
+
                         docker build \
+                            --build-arg BUILDPLATFORM=linux/amd64 \
+                            --build-arg TARGETOS=linux \
+                            --build-arg TARGETARCH=amd64 \
                             -t ${env.ECR_IMAGE} \
                             app/microservices-demo/src/${env.MICROSERVICE}
                     """
