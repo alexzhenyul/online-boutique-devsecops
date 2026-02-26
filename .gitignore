@@ -45,3 +45,5 @@ terrascan.tar.gz
 # AWS credentials
 .aws/
 credentials
+
+gitleaks.tar.gz
