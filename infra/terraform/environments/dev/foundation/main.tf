@@ -131,10 +131,11 @@ module "ecr" {
     "online-boutique/recommendationservice",
     "online-boutique/shippingservice",
     "online-boutique/adservice",
-    "online-boutique/loadgenerator"
+    "online-boutique/loadgenerator",
+    "online-boutique/shoppingassistantservice"
   ]
 
-  image_tag_mutability = "IMMUTABLE"
+  image_tag_mutability = "MUTABLE"
   scan_on_push         = true
 
   tags = local.common_tags
