@@ -96,6 +96,53 @@ pipeline {
             }
         }
 
+        stage('SCA - OWASP Dependency Check') {
+            when {
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
+            }
+            steps {
+                withCredentials([string(credentialsId: 'NVD_KEY', variable: 'NVD_KEY')]) {
+                    script {
+                        echo "🔍 Running OWASP Dependency Check on: app/microservices-demo/src/${env.MICROSERVICE}"
+
+                        def exitCode = sh(
+                            script: """
+                                dependency-check \
+                                    --scan app/microservices-demo/src/${env.MICROSERVICE} \
+                                    --project ${env.MICROSERVICE} \
+                                    --format HTML \
+                                    --format JSON \
+                                    --out reports/ \
+                                    --failOnCVSS 8 \
+                                    --nvdApiKey \$NVD_KEY
+                            """,
+                            returnStatus: true
+                        )
+
+                    if (exitCode != 0) {
+                        error "OWASP Dependency Check found vulnerabilities with CVSS ≥ 8.0!"
+                    } else {
+                        echo "No critical vulnerabilities found in ${env.MICROSERVICE}"
+                    }
+                }
+            }
+            post {
+                always {
+                    // Publish the HTML report in Jenkins
+                    publishHTML(target: [
+                        allowMissing         : true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll              : true,
+                        reportDir            : 'reports',
+                        reportFiles          : 'dependency-check-report.html',
+                        reportName           : 'OWASP Dependency Check Report'
+                    ])
+                    archiveArtifacts artifacts: 'reports/dependency-check-report.json', allowEmptyArchive: true
+                }
+            }
+        }
+    }    
+
         stage('Print Result') {
             steps {
                 script {
