@@ -1,6 +1,16 @@
 pipeline {
     agent any
 
+    environment {
+        // AWS & ECR
+        AWS_REGION      = 'ap-southeast-4'
+        ECR_REGISTRY    = '253343486660.dkr.ecr.ap-southeast-4.amazonaws.com'
+        ECR_REPO_PREFIX = 'online-boutique'
+        
+        // OWASP
+        DC_DATA_DIR     = '/var/lib/jenkins/dependency-check-data'
+    }
+
     stages {
 
         stage('Detect Changed Microservice') {
@@ -29,8 +39,15 @@ pipeline {
                         return
                     }
 
-                    env.MICROSERVICE = detectedService
-                    echo "Detected microservice: ${env.MICROSERVICE}"
+                    env.MICROSERVICE  = detectedService
+                    env.SERVICE_PATH  = "app/microservices-demo/src/${detectedService}"
+                    env.IMAGE_TAG     = env.GIT_COMMIT.take(8)
+                    env.ECR_IMAGE     = "${ECR_REGISTRY}/${ECR_REPO_PREFIX}/${detectedService}:${env.IMAGE_TAG}"
+
+                    echo "Detected microservice : ${env.MICROSERVICE}"
+                    echo "Service path          : ${env.SERVICE_PATH}"
+                    echo "Image tag              : ${env.IMAGE_TAG}"
+                    echo "ECR image             : ${env.ECR_IMAGE}"
                 }
             }
         }
@@ -210,6 +227,54 @@ pipeline {
             post {
                 always {
                     archiveArtifacts artifacts: 'hadolint-report.json', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            when {
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
+            }
+            steps {
+                script {
+                    echo "🔨 Building Docker image: ${env.ECR_IMAGE}"
+
+                    sh """
+                        docker build \
+                            -t ${env.ECR_IMAGE} \
+                            app/microservices-demo/src/${env.MICROSERVICE}
+                    """
+
+                    echo "Docker image built: ${env.ECR_IMAGE}"
+                }
+            }
+        }
+
+        stage('Push to ECR') {
+            when {
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
+            }
+            steps {
+                withCredentials([
+                    string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    script {
+                        echo "Pushing image to ECR: ${env.ECR_IMAGE}"
+
+                        sh """
+                            export AWS_ACCESS_KEY_ID=\$AWS_ACCESS_KEY_ID
+                            export AWS_SECRET_ACCESS_KEY=\$AWS_SECRET_ACCESS_KEY
+                            export AWS_DEFAULT_REGION=${AWS_REGION}
+
+                            aws ecr get-login-password --region ${AWS_REGION} | \
+                            docker login --username AWS --password-stdin ${ECR_REGISTRY}
+
+                            docker push ${env.ECR_IMAGE}
+                        """
+
+                        echo "Successfully pushed: ${env.ECR_IMAGE}"
+                    }
                 }
             }
         }
