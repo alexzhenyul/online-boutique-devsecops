@@ -75,7 +75,7 @@ cd "${REPO_ROOT}"
 
 git pull --rebase origin main
 
-touch "${TRIGGER_PATH}"
+echo "$(date)" > "${TRIGGER_PATH}"
 
 git add "${TRIGGER_PATH}"
 git commit -m "fix: trigger CI build for ${SERVICE}"
