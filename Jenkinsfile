@@ -13,8 +13,6 @@ pipeline {
 
     stages {
 
-    stages {
-
         stage('Detect Changed Microservice') {
             steps {
                 script {
@@ -435,7 +433,6 @@ pipeline {
                         ║    • ${env.ECR_IMAGE_LATEST}
                         ╚══════════════════════════════════════════════════════════════╝
                         """
-                        }
                     }
                 }
             }
