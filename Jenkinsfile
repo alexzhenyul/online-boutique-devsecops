@@ -208,7 +208,8 @@ pipeline {
                                     --data /var/lib/jenkins/dependency-check-data \
                                     --nvdApiKey \$NVD_KEY \
                                     --nvdApiDelay 6000 \
-                                    --nvdMaxRetryCount 5
+                                    --nvdMaxRetryCount 5 \
+                                    --disableOssIndex
                             """,
                             returnStatus: true
                         )
