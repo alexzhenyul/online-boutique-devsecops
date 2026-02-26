@@ -68,6 +68,33 @@ pipeline {
                 }
             }
         }
+        stage('SAST - SonarQube Analysis') {
+            when {
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
+            }
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh """
+                        sonar-scanner \
+                            -Dsonar.projectKey=${env.MICROSERVICE} \
+                            -Dsonar.projectName=${env.MICROSERVICE} \
+                            -Dsonar.sources=app/microservices-demo/src/${env.MICROSERVICE} \
+                            -Dsonar.projectVersion=${env.GIT_COMMIT.take(8)}
+                    """
+                }
+            }
+        }
+
+        stage('SonarQube Quality Gate') {
+            when {
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
+            }
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
 
         stage('Print Result') {
             steps {
