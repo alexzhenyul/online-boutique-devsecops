@@ -11,7 +11,7 @@ pipeline {
         DC_DATA_DIR     = '/var/lib/jenkins/dependency-check-data'
 
         // EMAIL
-        EMAIL_RECIPIENTS = 'zhenyu.alexl@gmail,lzyx0207@gmail.com'
+        EMAIL_RECIPIENTS = 'zhenyu.alexl@gmail.com,lzyx0207@gmail.com'
     }
 
     stages {
@@ -408,7 +408,7 @@ pipeline {
             steps {
                 script {
                     withCredentials([usernamePassword(
-                        credentialsId: 'github-pat-creds',
+                        credentialsId: 'github-creds',
                         usernameVariable: 'GIT_USER',
                         passwordVariable: 'GIT_TOKEN'
                     )]) {
@@ -600,7 +600,6 @@ pipeline {
                     mimeType: 'text/html',
                     to: env.EMAIL_RECIPIENTS,
                     attachmentsPattern: 'gitleaks-report.json,trivy-fs-report.json,trivy-image-report.json,hadolint-report.json,reports/dependency-check-report.json',
-                    allowEmptyArchive: true
                 )
             }
         }
