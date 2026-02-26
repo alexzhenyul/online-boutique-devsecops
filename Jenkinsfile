@@ -1,6 +1,14 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(
+            name: 'VERSION_BUMP',
+            choices: ['patch', 'minor', 'major'],
+            description: 'Select semver bump type: patch (1.0.x), minor (1.x.0), major (x.0.0)'
+        )
+    }
+
     environment {
         // AWS & ECR
         AWS_REGION      = 'ap-southeast-4'
@@ -237,7 +245,14 @@ pipeline {
             }
             steps {
                 script {
-                    echo "Building Docker image: ${env.ECR_IMAGE}"
+                    echo """
+                    ╔══════════════════════════════════════════════╗
+                    ║  Building Docker image
+                    ║  Service  : ${env.MICROSERVICE}
+                    ║  Semver   : ${env.SEMVER}
+                    ║  Git SHA  : ${env.GIT_SHORT}
+                    ╚══════════════════════════════════════════════╝
+                    """
 
                     sh """
                         export DOCKER_BUILDKIT=1
@@ -246,11 +261,56 @@ pipeline {
                             --build-arg BUILDPLATFORM=linux/amd64 \
                             --build-arg TARGETOS=linux \
                             --build-arg TARGETARCH=amd64 \
+                            --label "org.opencontainers.image.version=${env.SEMVER}" \
+                            --label "org.opencontainers.image.revision=${env.GIT_COMMIT}" \
+                            --label "org.opencontainers.image.created=\$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                            --label "org.opencontainers.image.source=${env.GIT_URL}" \
+                            --label "service=${env.MICROSERVICE}" \
                             -t ${env.ECR_IMAGE} \
-                            app/microservices-demo/src/${env.MICROSERVICE}
+                            -t ${env.ECR_IMAGE_SHA} \
+                            -t ${env.ECR_IMAGE_LATEST} \
+                            ${env.SERVICE_PATH}
                     """
 
-                    echo "Docker image built: ${env.ECR_IMAGE}"
+                    echo "Built tags:"
+                    echo "  ${env.ECR_IMAGE}        ← semver (primary)"
+                    echo "  ${env.ECR_IMAGE_SHA}    ← git sha (traceability)"
+                    echo "  ${env.ECR_IMAGE_LATEST} ← latest (convenience)"
+                }
+            }
+        }
+
+        stage('Trivy Image Scan') {
+            when {
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
+            }
+            steps {
+                script {
+                    echo "🔍 Running Trivy image scan on: ${env.ECR_IMAGE}"
+
+                    def exitCode = sh(
+                        script: """
+                            trivy image \
+                                --severity HIGH,CRITICAL \
+                                --exit-code 1 \
+                                --format json \
+                                --output trivy-image-report.json \
+                                --no-progress \
+                                ${env.ECR_IMAGE}
+                        """,
+                        returnStatus: true
+                    )
+
+                    if (exitCode == 1) {
+                        error "Trivy found HIGH/CRITICAL vulnerabilities in image: ${env.ECR_IMAGE}!"
+                    } else {
+                        echo "No HIGH/CRITICAL vulnerabilities found in image: ${env.ECR_IMAGE}"
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-image-report.json', allowEmptyArchive: true
                 }
             }
         }
@@ -261,25 +321,45 @@ pipeline {
             }
             steps {
                 withCredentials([
-                    string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-access-key-id',     variable: 'AWS_ACCESS_KEY_ID'),
                     string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
                     script {
-                        echo "Pushing image to ECR: ${env.ECR_IMAGE}"
-
                         sh """
                             export AWS_ACCESS_KEY_ID=\$AWS_ACCESS_KEY_ID
                             export AWS_SECRET_ACCESS_KEY=\$AWS_SECRET_ACCESS_KEY
                             export AWS_DEFAULT_REGION=${AWS_REGION}
 
                             aws ecr get-login-password --region ${AWS_REGION} | \
-                            docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                                docker login --username AWS --password-stdin ${ECR_REGISTRY}
 
                             docker push ${env.ECR_IMAGE}
+                            docker push ${env.ECR_IMAGE_SHA}
+                            docker push ${env.ECR_IMAGE_LATEST}
                         """
 
-                        echo "Successfully pushed: ${env.ECR_IMAGE}"
+                        echo "Successfully pushed:"
+                        echo "  ${env.ECR_IMAGE}"
+                        echo "  ${env.ECR_IMAGE_SHA}"
+                        echo "  ${env.ECR_IMAGE_LATEST}"
                     }
+                }
+            }
+        }
+
+        stage('Tag Git Commit') {
+            when {
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
+            }
+            steps {
+                script {
+                    sh """
+                        git config user.email "jenkins@ci"
+                        git config user.name  "Jenkins"
+                        git tag "${env.MICROSERVICE}/${env.SEMVER}"
+                        git push origin "${env.MICROSERVICE}/${env.SEMVER}"
+                    """
+                    echo "Git tag created: ${env.MICROSERVICE}/${env.SEMVER}"
                 }
             }
         }
@@ -290,7 +370,18 @@ pipeline {
                     if (!env.MICROSERVICE) {
                         echo "No microservice was detected."
                     } else {
-                        echo "Would run pipeline for: ${env.MICROSERVICE}"
+                        echo """
+                        ╔══════════════════════════════════════════════════════════════╗
+                        ║  Pipeline complete
+                        ║  Service  : ${env.MICROSERVICE}
+                        ║  Version  : ${env.SEMVER}  (${params.VERSION_BUMP} bump)
+                        ║  Git SHA  : ${env.GIT_SHORT}
+                        ║  Images pushed to ECR:
+                        ║    • ${env.ECR_IMAGE}
+                        ║    • ${env.ECR_IMAGE_SHA}
+                        ║    • ${env.ECR_IMAGE_LATEST}
+                        ╚══════════════════════════════════════════════════════════════╝
+                        """
                     }
                 }
             }
