@@ -33,7 +33,7 @@ pipeline {
                 SERVICES = services.unique()
 
                 if (SERVICES.isEmpty()) {
-                    echo "No services changed in this commit."
+                    echo "No services changed ingit this commit."
                 } else {
                     echo "Changed services: ${SERVICES}"
                 }
@@ -46,4 +46,5 @@ pipeline {
             echo "Service detection completed."
         }
     }
+}
 }
