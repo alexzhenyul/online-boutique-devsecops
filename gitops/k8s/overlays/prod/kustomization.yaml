@@ -3,40 +3,40 @@ kind: Kustomization
 
 namespace: online-boutique-prod
 
-bases:
-  - ../../base
 
 images:
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/frontend
-    newTag: "1.0.0"
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/cartservice
-    newTag: "1.0.0"
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/checkoutservice
-    newTag: "1.0.0"
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/productcatalogservice
-    newTag: "1.0.0"
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/currencyservice
-    newTag: "1.0.0"
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/paymentservice
-    newTag: "1.0.0"
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/shippingservice
-    newTag: "1.0.0"
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/emailservice
-    newTag: "1.0.0"
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/recommendationservice
-    newTag: "1.0.0"
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/adservice
-    newTag: "1.0.0"
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/loadgenerator
-    newTag: "1.0.0"
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/adservice
+  newTag: 1.0.0
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/cartservice
+  newTag: 1.0.0
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/checkoutservice
+  newTag: 1.0.0
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/currencyservice
+  newTag: 1.0.0
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/emailservice
+  newTag: 1.0.0
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/frontend
+  newTag: 0.0.4
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/loadgenerator
+  newTag: 1.0.0
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/paymentservice
+  newTag: 1.0.0
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/productcatalogservice
+  newTag: 1.0.0
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/recommendationservice
+  newTag: 1.0.0
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/shippingservice
+  newTag: 1.0.0
 
 patches:
-  - path: replicas-patch.yaml
-  - path: resources-patch.yaml
+- path: replicas-patch.yaml
+- path: resources-patch.yaml
 
 commonLabels:
   environment: prod
 
 commonAnnotations:
-  managed-by: jenkins
   environment: prod
+  managed-by: jenkins
+resources:
+- ../../base

@@ -3,36 +3,36 @@ kind: Kustomization
 
 namespace: online-boutique-dev
 
-bases:
-  - ../../base
 
 images:
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/frontend
-    newTag: latest   
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/cartservice
-    newTag: latest
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/checkoutservice
-    newTag: latest
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/productcatalogservice
-    newTag: latest
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/currencyservice
-    newTag: latest
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/paymentservice
-    newTag: latest
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/shippingservice
-    newTag: latest
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/emailservice
-    newTag: latest
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/recommendationservice
-    newTag: latest
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/adservice
-    newTag: latest
-  - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/loadgenerator
-    newTag: latest
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/adservice
+  newTag: latest
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/cartservice
+  newTag: latest
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/checkoutservice
+  newTag: latest
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/currencyservice
+  newTag: latest
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/emailservice
+  newTag: latest
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/frontend
+  newTag: latest
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/loadgenerator
+  newTag: latest
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/paymentservice
+  newTag: latest
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/productcatalogservice
+  newTag: latest
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/recommendationservice
+  newTag: latest
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/shippingservice
+  newTag: latest
 
 commonLabels:
   environment: dev
 
 commonAnnotations:
-  managed-by: jenkins
   environment: dev
+  managed-by: jenkins
+resources:
+- ../../base
