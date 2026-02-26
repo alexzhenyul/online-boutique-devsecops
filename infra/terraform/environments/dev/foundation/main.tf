@@ -120,7 +120,20 @@ module "eks" {
 module "ecr" {
   source = "../../../modules/ecr"
 
-  repository_name      = "${var.repository_name}-${var.environment}"
+  repository_names = [
+    "frontend",
+    "cartservice",
+    "checkoutservice",
+    "currencyservice",
+    "emailservice",
+    "paymentservice",
+    "productcatalogservice",
+    "recommendationservice",
+    "shippingservice",
+    "adservice",
+    "loadgenerator"
+  ]
+
   image_tag_mutability = "IMMUTABLE"
   scan_on_push         = true
 

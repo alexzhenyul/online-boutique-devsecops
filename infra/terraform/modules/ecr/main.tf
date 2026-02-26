@@ -1,5 +1,7 @@
 resource "aws_ecr_repository" "this" {
-  name                 = var.repository_name
+  for_each = toset(var.repository_names)   
+
+  name                 = each.value         
   image_tag_mutability = var.image_tag_mutability
 
   image_scanning_configuration {
@@ -10,11 +12,14 @@ resource "aws_ecr_repository" "this" {
     encryption_type = "AES256"
   }
 
-  tags = var.tags
+  tags = merge(var.tags, {
+    Microservice = each.value               
+  })
 }
 
 resource "aws_ecr_lifecycle_policy" "this" {
-  repository = aws_ecr_repository.this.name
+  for_each   = toset(var.repository_names) 
+  repository = aws_ecr_repository.this[each.value].name  
 
   policy = var.lifecycle_policy_json != "" ? var.lifecycle_policy_json : <<EOF
 {

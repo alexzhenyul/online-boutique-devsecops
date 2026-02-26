@@ -33,14 +33,19 @@ output "github_actions_role_arn" {
 }
 
 # ECR
-output "ecr_repository_url" {
-  description = "ECR Repository URL"
-  value       = module.ecr.repository_url
+output "ecr_repository_urls" {
+  description = "Map of all microservice ECR repository URLs"
+  value       = module.ecr.repository_urls
 }
 
-output "ecr_repository_name" {
-  description = "ECR Repository Name"
-  value       = module.ecr.repository_name
+output "ecr_repository_names" {
+  description = "List of all ECR repository names"
+  value       = module.ecr.repository_names
+}
+
+output "ecr_registry_id" {
+  description = "ECR registry ID"
+  value       = module.ecr.registry_id
 }
 
 # VPC

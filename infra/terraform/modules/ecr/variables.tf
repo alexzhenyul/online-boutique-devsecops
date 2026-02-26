@@ -1,28 +1,34 @@
-variable "repository_name" {
-  description = "Name of the ECR repository"
-  type        = string
+# Remove this:
+# variable "repository_name" {
+#   type = string
+# }
+
+# Add this:
+variable "repository_names" {
+  description = "List of ECR repository names"
+  type        = list(string)
 }
 
 variable "image_tag_mutability" {
-  description = "The tag mutability setting for the repository (MUTABLE or IMMUTABLE)"
+  description = "Image tag mutability setting"
   type        = string
-  default     = "IMMUTABLE"
+  default     = "MUTABLE"
 }
 
 variable "scan_on_push" {
-  description = "Indicates whether images are scanned after being pushed to the repository"
+  description = "Enable image scanning on push"
   type        = bool
   default     = true
 }
 
-variable "tags" {
-  description = "A map of tags to assign to the resource"
-  type        = map(string)
-  default     = {}
-}
-
 variable "lifecycle_policy_json" {
-  description = "JSON policy for lifecycle rules (optional, defaults to keeping last 30 untagged images)"
+  description = "Custom lifecycle policy JSON. Leave empty for default."
   type        = string
   default     = ""
+}
+
+variable "tags" {
+  description = "Tags to apply to all resources"
+  type        = map(string)
+  default     = {}
 }
