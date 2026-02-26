@@ -5,6 +5,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
+                echo "Checking out code..."
                 checkout scm
             }
         }
@@ -12,7 +13,7 @@ pipeline {
         stage('Detect Changed Services') {
             steps {
                 script {
-                    // Get changed files from the last commit
+                    // Get changed files in the last commit
                     def changedFiles = sh(
                         script: "git diff --name-only HEAD~1 || true",
                         returnStdout: true
@@ -25,8 +26,8 @@ pipeline {
                     changedFiles.split("\n").each { file ->
                         // Only consider files under app/microservices-demo/src/
                         if (file.startsWith("app/microservices-demo/src/")) {
-                            // service name is the folder after src/
-                            def svc = file.tokenize('/')[4] // 0=app,1=microservices-demo,2=src,3=service-type?,4=service-name?
+                            // service folder is the first folder under src
+                            def svc = file.tokenize('/')[4] // adjust for your folder depth
                             services.add(svc)
                         }
                     }
@@ -34,9 +35,19 @@ pipeline {
                     // Remove duplicates
                     SERVICES = services.unique()
 
-                    echo "Detected services: ${SERVICES}"
+                    if (SERVICES.isEmpty()) {
+                        echo "No services changed in this commit."
+                    } else {
+                        echo "Changed services: ${SERVICES}"
+                    }
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo "Service detection completed."
         }
     }
 }
