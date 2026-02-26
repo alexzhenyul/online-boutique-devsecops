@@ -450,7 +450,7 @@ pipeline {
                             git add gitops/k8s/overlays/prod/kustomization.yaml
 
                             git commit -m "ci: update ${env.MICROSERVICE} — dev:latest staging:latest prod:${env.SEMVER} [skip ci]"
-                            git push origin main
+                            git push origin HEAD:main
                         """
                         echo "Manifests updated:"
                         echo "  dev     → ${env.MICROSERVICE}:latest"
