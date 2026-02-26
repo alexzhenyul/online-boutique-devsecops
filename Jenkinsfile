@@ -405,6 +405,59 @@ pipeline {
             }
         }
 
+        stage('Update Kustomize Manifest') {
+            when {
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
+            }
+            steps {
+                script {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'github-creds',
+                        usernameVariable: 'GIT_USER',
+                        passwordVariable: 'GIT_TOKEN'
+                    )]) {
+                        sh """
+                            git config user.email "jenkins@ci"
+                            git config user.name  "Jenkins"
+
+                            git remote set-url origin https://\${GIT_USER}:\${GIT_TOKEN}@github.com/${env.GIT_ORG}/${env.GIT_REPO}.git
+
+                            git pull origin main
+
+                            # ── Dev: always latest ────────────────────────────────
+                            cd k8s/overlays/dev
+                            kustomize edit set image \
+                                ${env.ECR_REGISTRY}/${env.ECR_REPO_PREFIX}/${env.MICROSERVICE}:latest
+                            cd ../../..
+
+                            # ── Staging: always latest ────────────────────────────
+                            cd k8s/overlays/staging
+                            kustomize edit set image \
+                                ${env.ECR_REGISTRY}/${env.ECR_REPO_PREFIX}/${env.MICROSERVICE}:latest
+                            cd ../../..
+
+                            # ── Prod: pinned to exact semver ──────────────────────
+                            cd k8s/overlays/prod
+                            kustomize edit set image \
+                                ${env.ECR_REGISTRY}/${env.ECR_REPO_PREFIX}/${env.MICROSERVICE}:${env.SEMVER}
+                            cd ../../..
+
+                            git add k8s/overlays/dev/kustomization.yaml
+                            git add k8s/overlays/staging/kustomization.yaml
+                            git add k8s/overlays/prod/kustomization.yaml
+
+                            git commit -m "ci: update ${env.MICROSERVICE} — dev:latest staging:latest prod:${env.SEMVER} [skip ci]"
+                            git push origin main
+                        """
+                        echo "Manifests updated:"
+                        echo "  dev     → ${env.MICROSERVICE}:latest"
+                        echo "  staging → ${env.MICROSERVICE}:latest"
+                        echo "  prod    → ${env.MICROSERVICE}:${env.SEMVER}"
+                    }
+                }
+            }
+        }
+
         stage('Tag Git Commit') {
             when {
                 expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
