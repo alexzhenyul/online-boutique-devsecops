@@ -408,7 +408,7 @@ pipeline {
             steps {
                 script {
                     withCredentials([usernamePassword(
-                        credentialsId: 'github-creds',
+                        credentialsId: 'System-Global-github-creds-github-creds',
                         usernameVariable: 'GIT_USER',
                         passwordVariable: 'GIT_TOKEN'
                     )]) {
@@ -416,7 +416,7 @@ pipeline {
                             git config user.email "jenkins@ci"
                             git config user.name  "Jenkins"
 
-                            git remote set-url origin https://\${GIT_USER}:\${GIT_TOKEN}@github.com/${GIT_ORG}/${GIT_REPO}.git
+                            git remote set-url origin https://\${GIT_USER}:\${GIT_TOKEN}@github.com/${env.GIT_ORG}/${env.GIT_REPO}.git
 
                             git tag "${env.MICROSERVICE}/${env.SEMVER}"
                             git push origin "${env.MICROSERVICE}/${env.SEMVER}"
