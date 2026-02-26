@@ -425,26 +425,26 @@ pipeline {
                             git pull origin main
 
                             # ── Dev: always latest ────────────────────────────────
-                            cd k8s/overlays/dev
+                            cd gitops/k8s/overlays/dev
                             kustomize edit set image \
                                 ${env.ECR_REGISTRY}/${env.ECR_REPO_PREFIX}/${env.MICROSERVICE}:latest
-                            cd ../../..
+                            cd ../../../..
 
                             # ── Staging: always latest ────────────────────────────
-                            cd k8s/overlays/staging
+                            cd gitops/k8s/overlays/staging
                             kustomize edit set image \
                                 ${env.ECR_REGISTRY}/${env.ECR_REPO_PREFIX}/${env.MICROSERVICE}:latest
-                            cd ../../..
+                            cd ../../../..
 
                             # ── Prod: pinned to exact semver ──────────────────────
-                            cd k8s/overlays/prod
+                            cd gitops/k8s/overlays/prod
                             kustomize edit set image \
                                 ${env.ECR_REGISTRY}/${env.ECR_REPO_PREFIX}/${env.MICROSERVICE}:${env.SEMVER}
-                            cd ../../..
+                            cd ../../../..
 
-                            git add k8s/overlays/dev/kustomization.yaml
-                            git add k8s/overlays/staging/kustomization.yaml
-                            git add k8s/overlays/prod/kustomization.yaml
+                            git add gitops/k8s/overlays/dev/kustomization.yaml
+                            git add gitops/k8s/overlays/staging/kustomization.yaml
+                            git add gitops/k8s/overlays/prod/kustomization.yaml
 
                             git commit -m "ci: update ${env.MICROSERVICE} — dev:latest staging:latest prod:${env.SEMVER} [skip ci]"
                             git push origin main
