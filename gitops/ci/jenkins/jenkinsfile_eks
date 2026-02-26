@@ -1,0 +1,222 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'repoUrl', defaultValue: 'https://github.com/alexzhenyul/online-boutique-devsecops.git', description: 'Git repository URL')
+        choice(name: 'environment', choices: ['dev', 'staging', 'prod'], description: 'Select the environment to deploy')
+        choice(name: 'target', choices: ['foundation', 'addons', 'both'], description: 'Which layer to deploy')
+        booleanParam(name: 'skipSecurityChecks', defaultValue: false, description: 'Skip security scanning (not recommended)')
+        booleanParam(name: 'forceContinue', defaultValue: false, description: 'Force continue even if security issues found')
+        booleanParam(name: 'skipApply', defaultValue: false, description: 'Skip Terraform apply (plan-only run)')
+        string(name: 'emailRecipients', defaultValue: 'zhenyu.alexl@gmail.com', description: 'Email recipients (comma separated)')
+    }
+
+    environment {
+        AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        AWS_DEFAULT_REGION    = 'ap-southeast-4'
+        FOUNDATION_DIR        = "infra/terraform/environments/${params.environment}/foundation"
+        ADDONS_DIR            = "infra/terraform/environments/${params.environment}/addons"
+    }
+
+    stages {
+        // ─────────────────────────────────────────────
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: params.repoUrl
+                sh """
+                    echo "Repo:        ${params.repoUrl}"
+                    echo "Commit:      \$(git rev-parse --short HEAD)"
+                    echo "Environment: ${params.environment}"
+                    echo "Target:      ${params.target}"
+                """
+            }
+        }
+
+        // ─────────────────────────────
+        // 🔒 Security Scan (tfsec)
+        // ─────────────────────────────
+        stage('Security Scan - tfsec') {
+            when { expression { !params.skipSecurityChecks } }
+            steps {
+                sh """
+                    echo "Running TFSEC..."
+                    tfsec infra/terraform/environments/${params.environment}/ \
+                        --format csv --minimum-severity MEDIUM --soft-fail > tfsec-report.csv || true
+                    cat tfsec-report.csv
+                """
+                archiveArtifacts artifacts: 'tfsec-report.csv'
+            }
+        }
+
+        // ─────────────────────────────
+        // ✅ Quality Gate
+        // ─────────────────────────────
+        stage('Quality Gate') {
+            when {
+                expression { params.skipSecurityChecks == false }
+            }
+            steps {
+                script {
+                    echo "Checking Quality Gate..."
+
+                    def criticalCount = sh(script: "grep -i ',CRITICAL,' tfsec-report.csv | wc -l || echo 0", returnStdout: true).trim().toInteger()
+                    def highCount     = sh(script: "grep -i ',HIGH,' tfsec-report.csv | wc -l || echo 0", returnStdout: true).trim().toInteger()
+                    def mediumCount   = sh(script: "grep -i ',MEDIUM,' tfsec-report.csv | wc -l || echo 0", returnStdout: true).trim().toInteger()
+
+                    env.CRITICAL_COUNT = criticalCount.toString()
+                    env.HIGH_COUNT     = highCount.toString()
+                    env.MEDIUM_COUNT   = mediumCount.toString()
+
+                    echo """
+                    ====== QUALITY GATE SUMMARY ======
+                    CRITICAL : ${criticalCount}
+                    HIGH     : ${highCount}
+                    MEDIUM   : ${mediumCount}
+                    ===================================
+                    """
+
+                    if (criticalCount > 0 && !params.forceContinue) {
+                        env.QUALITY_GATE_STATUS = 'FAILED'
+                        error "❌ Quality Gate FAILED! ${criticalCount} CRITICAL issue(s) found. Fix before deploying."
+                    } else {
+                        env.QUALITY_GATE_STATUS = 'PASSED'
+                        echo "✅ Quality Gate PASSED or Force Continue enabled."
+                    }
+                }
+            }
+        }
+
+        // ─────────────────────────────
+        // Terraform Plan Stages
+        // ─────────────────────────────
+        stage('Init - Foundation') {
+            when { expression { params.target in ['foundation','both'] } }
+            steps { sh "cd ${FOUNDATION_DIR} && terraform init -reconfigure" }
+        }
+
+        stage('Validate - Foundation') {
+            when { expression { params.target in ['foundation','both'] } }
+            steps { sh "cd ${FOUNDATION_DIR} && terraform validate" }
+        }
+
+        stage('Plan - Foundation') {
+            when { expression { params.target in ['foundation','both'] } }
+            steps {
+                sh """
+                    cd ${FOUNDATION_DIR}
+                    terraform plan -out=tfplan
+                    terraform show -no-color tfplan > tfplan-foundation.txt
+                """
+                archiveArtifacts artifacts: "${FOUNDATION_DIR}/tfplan-foundation.txt"
+            }
+        }
+
+        stage('Init - Addons') {
+            when { expression { params.target in ['addons','both'] } }
+            steps { sh "cd ${ADDONS_DIR} && terraform init -reconfigure" }
+        }
+
+        stage('Validate - Addons') {
+            when { expression { params.target in ['addons','both'] } }
+            steps { sh "cd ${ADDONS_DIR} && terraform validate" }
+        }
+
+        stage('Plan - Addons') {
+            when { expression { params.target in ['addons','both'] } }
+            steps {
+                sh """
+                    cd ${ADDONS_DIR}
+                    terraform plan -out=tfplan
+                    terraform show -no-color tfplan > tfplan-addons.txt
+                """
+                archiveArtifacts artifacts: "${ADDONS_DIR}/tfplan-addons.txt"
+            }
+        }
+
+        // ─────────────────────────────
+        // 🧍 Manual Approval
+        // ─────────────────────────────
+        stage('Manual Approval for Apply') {
+            when {
+                expression { !params.skipApply }
+            }
+            steps {
+                timeout(time: 15, unit: 'MINUTES') {
+                    input message: "Do you want to continue with Terraform Apply for ${params.environment}?",
+                          ok: "Proceed with Apply"
+                }
+            }
+        }
+
+        // ─────────────────────────────
+        // 🚀 Terraform Apply Stages
+        // ─────────────────────────────
+        stage('Apply - Foundation') {
+            when { expression { !params.skipApply && params.target in ['foundation','both'] } }
+            steps {
+                sh "cd ${FOUNDATION_DIR} && terraform apply -auto-approve tfplan"
+            }
+        }
+
+        stage('Apply - Addons') {
+            when { expression { !params.skipApply && params.target in ['addons','both'] } }
+            steps {
+                sh "cd ${ADDONS_DIR} && terraform apply -auto-approve tfplan"
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    post {
+        always {
+            echo "Build completed. Artifacts archived for review."
+        }
+
+        success {
+            emailext(
+                to: params.emailRecipients,
+                subject: "✅ [SUCCESS] Terraform Pipeline - ${params.environment} - Build #${BUILD_NUMBER}",
+                mimeType: 'text/html',
+                attachmentsPattern: 'tfsec-report.csv, **/tfplan-foundation.txt, **/tfplan-addons.txt',
+                body: """
+                <h2>Terraform Pipeline - SUCCESS ✅</h2>
+                <p><b>Environment:</b> ${params.environment}</p>
+                <p><b>Target:</b> ${params.target}</p>
+                <p><b>Quality Gate:</b> ${env.QUALITY_GATE_STATUS ?: 'SKIPPED'}</p>
+                <p>Artifacts attached:<br>
+                  - tfsec-report.csv<br>
+                  - tfplan-foundation.txt<br>
+                  - tfplan-addons.txt
+                </p>
+                <hr>
+                <p>Pipeline executed successfully. Review attached reports for details.</p>
+                """
+            )
+            cleanWs()
+        }
+
+        failure {
+            emailext(
+                to: params.emailRecipients,
+                subject: "❌ [FAILED] Terraform Pipeline - ${params.environment} - Build #${BUILD_NUMBER}",
+                mimeType: 'text/html',
+                attachmentsPattern: 'tfsec-report.csv, **/tfplan-foundation.txt, **/tfplan-addons.txt',
+                body: """
+                <h2>Terraform Pipeline - FAILED ❌</h2>
+                <p><b>Environment:</b> ${params.environment}</p>
+                <p><b>Target:</b> ${params.target}</p>
+                <p><b>Quality Gate:</b> ${env.QUALITY_GATE_STATUS ?: 'SKIPPED'}</p>
+                <p>Artifacts attached:<br>
+                  - tfsec-report.csv<br>
+                  - tfplan-foundation.txt<br>
+                  - tfplan-addons.txt
+                </p>
+                <hr>
+                <p>Please review the logs and attached reports for more details.</p>
+                """
+            )
+            cleanWs()
+        }
+    }
+}

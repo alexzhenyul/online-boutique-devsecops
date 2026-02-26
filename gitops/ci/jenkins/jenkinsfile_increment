@@ -1,0 +1,84 @@
+pipeline {
+    agent any
+
+    parameters {
+        booleanParam(name: 'SKIP_GITLEAKS', defaultValue: false, description: 'Skip Gitleaks Secret Scan')
+    }
+
+    environment {
+        GIT_URL = 'https://github.com/alexzhenyul/online-boutique-devsecops.git'
+        BRANCH = 'main'
+        RECIPIENTS = 'zhenyu.alexl@gmail.com'
+        GITLEAKS_REPORT = 'gitleaks-report.json'
+        SCANNER_HOME=tool 'Sonar-Scanner'
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                git branch: "${BRANCH}", url: "${GIT_URL}"
+            }
+        }
+
+        stage('Gitleaks Secret Scan') {
+            when {
+                expression { return !params.SKIP_GITLEAKS }
+            }
+            steps {
+                sh '''
+                    # Ensure /usr/local/bin is in PATH
+                    export PATH=$PATH:/usr/local/bin
+
+                    # Install Gitleaks if missing
+                    if ! command -v gitleaks >/dev/null 2>&1; then
+                        wget https://github.com/gitleaks/gitleaks/releases/download/v8.30.0/gitleaks_8.30.0_linux_x64.tar.gz -O gitleaks.tar.gz
+                        tar -xzf gitleaks.tar.gz
+                        sudo mv gitleaks /usr/local/bin/gitleaks
+                        sudo chmod +x /usr/local/bin/gitleaks
+                    fi
+
+                    # Run Gitleaks scan
+                    gitleaks detect --source . --report-path ${GITLEAKS_REPORT} --report-format json || true
+                '''
+                // Archive the report
+                archiveArtifacts artifacts: "${GITLEAKS_REPORT}", fingerprint: true
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                def report = ''
+                if (fileExists("${GITLEAKS_REPORT}")) {
+                    def content = readFile("${GITLEAKS_REPORT}").trim()
+                    if (content == '[]' || content == '') {
+                        report = 'No secrets found by Gitleaks.'
+                    } else {
+                        // Summarize leaks: path + secret + rule
+                        def json = readJSON text: content
+                        def lines = json.collect { leak ->
+                            "Path: ${leak.path}, Secret: ${leak.secret}, Rule: ${leak.rule}"
+                        }
+                        report = lines.join('\n')
+                    }
+                } else {
+                    report = 'No Gitleaks scan run or report found.'
+                }
+
+                def status = currentBuild.currentResult
+                mail to: "${RECIPIENTS}",
+                     subject: "Jenkins Build ${status}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                     body: """
+                        Build Status: ${status}
+                        Job: ${env.JOB_NAME} #${env.BUILD_NUMBER}
+                        URL: ${env.BUILD_URL}
+
+                        --- Gitleaks Report ---
+                        ${report}
+                     """
+            }
+        }
+    }
+} 

@@ -1,0 +1,144 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION = "ap-southeast-4"
+        AWS_ACCOUNT_ID = "<YOUR_ACCOUNT_ID>"
+        ECR_REPO = "adservice"
+        IMAGE_NAME = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
+        OVERLAY_FILE = "app/microservices-demo/overlays/dev/kustomization.yaml"
+        COSIGN_EXPERIMENTAL = "true"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/alexzhenyul/online-boutique-devsecops.git'
+            }
+        }
+
+        stage('Gitleaks Secret Scan') {
+            steps {
+                sh 'gitleaks detect --source . --exit-code 1'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            environment {
+                SONARQUBE = tool 'SonarQube'
+            }
+            steps {
+                withSonarQubeEnv('sonarqube-server') {
+                    sh """
+                        sonar-scanner \
+                        -Dsonar.projectKey=online-boutique \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=http://<SONAR_SERVER>:9000 \
+                        -Dsonar.login=<SONAR_TOKEN>
+                    """
+                }
+            }
+        }
+
+        stage('OWASP Dependency Check') {
+            steps {
+                dependencyCheck additionalArguments: '--scan .',
+                                 odcInstallation: 'OWASP-DC'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+
+        stage('Hadolint Dockerfile Scan') {
+            steps {
+                sh 'hadolint Dockerfile'
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                script {
+                    env.BUILD_TAG = "${BUILD_NUMBER}"
+                }
+                sh """
+                    docker build -t ${ECR_REPO}:${BUILD_TAG} .
+                """
+            }
+        }
+
+        stage('Trivy Image Scan') {
+            steps {
+                sh """
+                    trivy image --exit-code 1 --severity HIGH,CRITICAL ${ECR_REPO}:${BUILD_TAG}
+                """
+            }
+        }
+
+        stage('Generate SBOM') {
+            steps {
+                sh """
+                    trivy image --format cyclonedx \
+                    -o sbom-${BUILD_TAG}.json \
+                    ${ECR_REPO}:${BUILD_TAG}
+                """
+            }
+        }
+
+        stage('Login to ECR') {
+            steps {
+                sh """
+                    aws ecr get-login-password --region ${AWS_REGION} \
+                    | docker login --username AWS \
+                    --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                """
+            }
+        }
+
+        stage('Push Image') {
+            steps {
+                sh """
+                    docker tag ${ECR_REPO}:${BUILD_TAG} ${IMAGE_NAME}:${BUILD_TAG}
+                    docker push ${IMAGE_NAME}:${BUILD_TAG}
+                """
+            }
+        }
+
+        stage('Cosign Sign Image') {
+            steps {
+                withCredentials([file(credentialsId: 'cosign-key', variable: 'COSIGN_KEY')]) {
+                    sh """
+                        cosign sign --key $COSIGN_KEY ${IMAGE_NAME}:${BUILD_TAG}
+                    """
+                }
+            }
+        }
+
+        stage('Update Kustomize Tag') {
+            steps {
+                sh """
+                    sed -i 's|newTag: ".*"|newTag: "${BUILD_TAG}"|' ${OVERLAY_FILE}
+                """
+            }
+        }
+
+        stage('Git Commit & Push') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-creds',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_PASS'
+                )]) {
+                    sh """
+                        git config user.email "jenkins@devsecops.com"
+                        git config user.name "jenkins"
+
+                        git add ${OVERLAY_FILE}
+                        git commit -m "Update image tag to ${BUILD_TAG}"
+                        git push https://${GIT_USER}:${GIT_PASS}@github.com/alexzhenyul/online-boutique-devsecops.git main
+                    """
+                }
+            }
+        }
+    }
+}
