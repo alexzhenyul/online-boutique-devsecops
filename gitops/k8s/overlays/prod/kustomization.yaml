@@ -27,6 +27,8 @@ images:
   newTag: 1.0.0
 - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/shippingservice
   newTag: 1.0.0
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/shoppingassistantservice
+  newTag: 0.0.1
 
 patches:
 - path: replicas-patch.yaml
