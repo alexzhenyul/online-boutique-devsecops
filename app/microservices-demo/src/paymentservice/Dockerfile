@@ -26,6 +26,8 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 
 RUN npm install --only=production
+# Remove CLI-only tools not needed at runtime (contains taffydb CVE-2019-10790 and minimatch CVE-2026-26996)
+RUN find /usr/src/app/node_modules -path "*/protobufjs/cli" -type d -exec rm -rf {} + 2>/dev/null; exit 0
 
 FROM alpine:3.23.3@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
 
