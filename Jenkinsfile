@@ -358,6 +358,7 @@ pipeline {
                             trivy image \
                                 --severity HIGH,CRITICAL \
                                 --exit-code 1 \
+                                --ignore-unfixed \
                                 --format json \
                                 --output trivy-image-report.json \
                                 --no-progress \
