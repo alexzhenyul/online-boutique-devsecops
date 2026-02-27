@@ -221,7 +221,7 @@ pipeline {
                                         sh "cd ${gradleDir} && chmod +x gradlew && ./gradlew classes --no-daemon"
                                         sonarArgs += [
                                             "-Dsonar.java.binaries=${gradleDir}/build/classes",
-                                            "-Dsonar.java.source=11"
+                                            "-Dsonar.java.source=21"
                                         ]
                                         break
 
