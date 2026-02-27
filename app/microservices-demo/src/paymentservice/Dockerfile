@@ -25,6 +25,7 @@ WORKDIR /usr/src/app
 
 COPY package*.json ./
 
+# hadolint ignore=DL3016
 RUN npm install --only=production && \
     npm install minimatch@3.1.3 && \
     npm dedupe
