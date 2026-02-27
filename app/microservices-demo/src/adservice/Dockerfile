@@ -12,30 +12,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM --platform=$BUILDPLATFORM eclipse-temurin:24.0.2_12-jdk-noble@sha256:dacac8e9a0df0d2bd24e702b4431132875c249930b70555ebd7ca285b5bee684 AS builder
+# =========================
+# Stage 1 — Build Application
+# =========================
+FROM --platform=$BUILDPLATFORM eclipse-temurin:24.0.2_12-jdk-noble AS builder
 
 WORKDIR /app
 
-COPY ["build.gradle", "gradlew", "./"]
+# Copy Gradle wrapper & config first (better Docker cache)
+COPY build.gradle gradlew ./
 COPY gradle gradle
+
+# Make gradlew executable
 RUN chmod +x gradlew
+
+# Download dependencies (cache layer)
 RUN ./gradlew downloadRepos
 
+# Copy application source
 COPY . .
-RUN chmod +x gradlew
+
+# Build application distribution
 RUN ./gradlew installDist
 
-FROM eclipse-temurin:25.0.1_8-jre-alpine@sha256:9c65fe190cb22ba92f50b8d29a749d0f1cfb2437e09fe5fbf9ff927c45fc6e99
 
-# @TODO: https://github.com/GoogleCloudPlatform/microservices-demo/issues/2517
-# Download Stackdriver Profiler Java agent
-# RUN mkdir -p /opt/cprof && \
-#     wget -q -O- https://storage.googleapis.com/cloud-profiler/java/latest/profiler_java_agent_alpine.tar.gz \
-#     | tar xzv -C /opt/cprof && \
-#     rm -rf profiler_java_agent.tar.gz
+# =========================
+# Stage 2 — Runtime Image
+# =========================
+FROM eclipse-temurin:25-jre-alpine
+
+# ✅ SECURITY FIX — patch Alpine vulnerabilities (Trivy fix)
+RUN apk update && \
+    apk upgrade --no-cache && \
+    rm -rf /var/cache/apk/*
 
 WORKDIR /app
+
+# Copy built app from builder stage
 COPY --from=builder /app .
 
+# Expose application port
 EXPOSE 9555
+
+# Run service
 ENTRYPOINT ["/app/build/install/hipstershop/bin/AdService"]
