@@ -49,6 +49,24 @@ pipeline {
                     env.SERVICE_PATH = "app/microservices-demo/src/${detectedService}"
                     env.GIT_SHORT    = env.GIT_COMMIT.take(8)
 
+                    // ── Language Detection ────────────────────────────────────────
+                    def serviceDir = env.SERVICE_PATH
+                    def language   = 'unknown'
+
+                    if (fileExists("${serviceDir}/pom.xml")) {
+                        language = 'java'
+                    } else if (fileExists("${serviceDir}/go.mod")) {
+                        language = 'go'
+                    } else if (fileExists("${serviceDir}/package.json")) {
+                        language = 'nodejs'
+                    } else if (fileExists("${serviceDir}/requirements.txt")) {
+                        language = 'python'
+                    } else if (sh(script: "ls ${serviceDir}/*.csproj 2>/dev/null | head -1", returnStdout: true).trim()) {
+                        language = 'csharp'
+                    }
+
+                    env.LANGUAGE = language
+
                     // ── Conventional Commits: auto-detect bump type ───────────
                     def commitMsg = sh(
                         script: "git log -1 --pretty=%B HEAD",
@@ -112,6 +130,7 @@ pipeline {
                     echo """
                     ╔══════════════════════════════════════════════╗
                     ║  Detected microservice : ${env.MICROSERVICE}
+                    ║  Language              : ${env.LANGUAGE}
                     ║  Commit message type   : ${bumpType}
                     ║  Previous version      : ${rawTag}
                     ║  New version           : ${env.SEMVER}
@@ -158,21 +177,58 @@ pipeline {
         }
 
         stage('SAST - SonarQube Analysis') {
-            when {
-                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
-            }
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh """
-                        sonar-scanner \
-                            -Dsonar.projectKey=${env.MICROSERVICE} \
-                            -Dsonar.projectName=${env.MICROSERVICE} \
-                            -Dsonar.sources=app/microservices-demo/src/${env.MICROSERVICE} \
-                            -Dsonar.projectVersion=${env.GIT_COMMIT.take(8)}
-                    """
+                    when {
+                        expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
+                    }
+                    steps {
+                        withSonarQubeEnv('SonarQube') {
+                            script {
+                                def serviceDir = "app/microservices-demo/src/${env.MICROSERVICE}"
+
+                                def sonarArgs = [
+                                    "-Dsonar.projectKey=${env.MICROSERVICE}",
+                                    "-Dsonar.projectName=${env.MICROSERVICE}",
+                                    "-Dsonar.sources=${serviceDir}",
+                                    "-Dsonar.projectVersion=${env.GIT_SHORT}"
+                                ]
+
+                                switch (env.LANGUAGE) {
+                                    case 'java':
+                                        echo "Language: Java → compiling with Maven before scan"
+                                        sh "mvn clean compile -f ${serviceDir}/pom.xml"
+                                        sonarArgs += [
+                                            "-Dsonar.java.binaries=${serviceDir}/target/classes",
+                                            "-Dsonar.java.source=11"
+                                        ]
+                                        break
+                                    case 'go':
+                                        echo "Language: Go → scanning source directly"
+                                        break
+                                    case 'nodejs':
+                                        echo "Language: Node.js → scanning source directly"
+                                        sonarArgs += [
+                                            "-Dsonar.javascript.lcov.reportPaths=${serviceDir}/coverage/lcov.info"
+                                        ]
+                                        break
+                                    case 'python':
+                                        echo "Language: Python → scanning source directly"
+                                        sonarArgs += [
+                                            "-Dsonar.python.version=3"
+                                        ]
+                                        break
+                                    case 'csharp':
+                                        echo "Language: C# → scanning source directly"
+                                        break
+                                    default:
+                                        echo "WARNING: Unknown language for ${env.MICROSERVICE} — running generic scan"
+                                        break
+                                }
+
+                                sh "sonar-scanner ${sonarArgs.join(' \\\n    ')}"
+                            }
+                        }
+                    }
                 }
-            }
-        }
 
         stage('SonarQube Quality Gate') {
             when {
