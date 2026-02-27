@@ -53,19 +53,22 @@ pipeline {
                     def serviceDir = env.SERVICE_PATH
                     def language   = 'unknown'
 
-                    if (fileExists("${serviceDir}/pom.xml")) {
-                        language = 'java'
-                    } else if (fileExists("${serviceDir}/go.mod")) {
-                        language = 'go'
-                    } else if (fileExists("${serviceDir}/package.json")) {
-                        language = 'nodejs'
-                    } else if (fileExists("${serviceDir}/requirements.txt")) {
-                        language = 'python'
-                    } else if (sh(script: "ls ${serviceDir}/*.csproj 2>/dev/null | head -1", returnStdout: true).trim()) {
-                        language = 'csharp'
-                    }
+                    def hasPom     = sh(script: "find ${serviceDir} -name 'pom.xml'     -maxdepth 3 | head -1", returnStdout: true).trim()
+                    def hasGoMod   = sh(script: "find ${serviceDir} -name 'go.mod'      -maxdepth 3 | head -1", returnStdout: true).trim()
+                    def hasPkgJson = sh(script: "find ${serviceDir} -name 'package.json'-maxdepth 3 | head -1", returnStdout: true).trim()
+                    def hasReqs    = sh(script: "find ${serviceDir} -name 'requirements.txt' -maxdepth 3 | head -1", returnStdout: true).trim()
+                    def hasCsproj  = sh(script: "find ${serviceDir} -name '*.csproj'    -maxdepth 3 | head -1", returnStdout: true).trim()
 
-                    env.LANGUAGE = language
+                    if      (hasPom)     { language = 'java'   }
+                    else if (hasGoMod)   { language = 'go'     }
+                    else if (hasPkgJson) { language = 'nodejs' }
+                    else if (hasReqs)    { language = 'python' }
+                    else if (hasCsproj)  { language = 'csharp' }
+
+                    env.LANGUAGE    = language
+                    env.SERVICE_DIR = serviceDir  // store for use in SonarQube stage
+
+                    echo "Language detected: ${language}"
 
                     // ── Conventional Commits: auto-detect bump type ───────────
                     def commitMsg = sh(
@@ -195,9 +198,11 @@ pipeline {
                                 switch (env.LANGUAGE) {
                                     case 'java':
                                         echo "Language: Java → compiling with Maven before scan"
-                                        sh "mvn clean compile -f ${serviceDir}/pom.xml"
+                                        def pomPath = sh(script: "find ${serviceDir} -name 'pom.xml' -maxdepth 3 | head -1", returnStdout: true).trim()
+                                        def pomDir  = pomPath.replace('/pom.xml', '')
+                                        sh "mvn clean compile -f ${pomPath}"
                                         sonarArgs += [
-                                            "-Dsonar.java.binaries=${serviceDir}/target/classes",
+                                            "-Dsonar.java.binaries=${pomDir}/target/classes",
                                             "-Dsonar.java.source=11"
                                         ]
                                         break
