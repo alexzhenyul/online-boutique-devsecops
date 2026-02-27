@@ -53,24 +53,27 @@ pipeline {
                     def serviceDir = env.SERVICE_PATH
                     def language   = 'unknown'
 
-                    def hasPom     = sh(script: "find ${serviceDir} -maxdepth 5 -name 'pom.xml'          | head -1", returnStdout: true).trim()
-                    def hasGoMod   = sh(script: "find ${serviceDir} -maxdepth 5 -name 'go.mod'           | head -1", returnStdout: true).trim()
-                    def hasPkgJson = sh(script: "find ${serviceDir} -maxdepth 5 -name 'package.json'     | head -1", returnStdout: true).trim()
-                    def hasReqs    = sh(script: "find ${serviceDir} -maxdepth 5 -name 'requirements.txt' | head -1", returnStdout: true).trim()
-                    def hasCsproj  = sh(script: "find ${serviceDir} -maxdepth 5 -name '*.csproj'         | head -1", returnStdout: true).trim()
+                    def hasPom      = sh(script: "find ${serviceDir} -maxdepth 5 -name 'pom.xml'          | head -1", returnStdout: true).trim()
+                    def hasGradle   = sh(script: "find ${serviceDir} -maxdepth 5 -name 'build.gradle'      | head -1", returnStdout: true).trim()
+                    def hasGoMod    = sh(script: "find ${serviceDir} -maxdepth 5 -name 'go.mod'            | head -1", returnStdout: true).trim()
+                    def hasPkgJson  = sh(script: "find ${serviceDir} -maxdepth 5 -name 'package.json'      | head -1", returnStdout: true).trim()
+                    def hasReqs     = sh(script: "find ${serviceDir} -maxdepth 5 -name 'requirements.txt'  | head -1", returnStdout: true).trim()
+                    def hasCsproj   = sh(script: "find ${serviceDir} -maxdepth 5 -name '*.csproj'          | head -1", returnStdout: true).trim()
 
                     echo "=== Language Detection Results ==="
                     echo "pom.xml          : ${hasPom     ?: 'not found'}"
+                    echo "build.gradle     : ${hasGradle  ?: 'not found'}"
                     echo "go.mod           : ${hasGoMod   ?: 'not found'}"
                     echo "package.json     : ${hasPkgJson ?: 'not found'}"
                     echo "requirements.txt : ${hasReqs    ?: 'not found'}"
                     echo "*.csproj         : ${hasCsproj  ?: 'not found'}"
 
-                    if      (hasPom)     { language = 'java'   }
-                    else if (hasGoMod)   { language = 'go'     }
-                    else if (hasPkgJson) { language = 'nodejs' }
-                    else if (hasReqs)    { language = 'python' }
-                    else if (hasCsproj)  { language = 'csharp' }
+                    if      (hasPom)     { language = 'java-maven'  }
+                    else if (hasGradle)  { language = 'java-gradle' }
+                    else if (hasGoMod)   { language = 'go'          }
+                    else if (hasPkgJson) { language = 'nodejs'      }
+                    else if (hasReqs)    { language = 'python'      }
+                    else if (hasCsproj)  { language = 'csharp'      }
 
                     env.LANGUAGE = language
                     echo "Language detected: ${language}"
@@ -201,34 +204,49 @@ pipeline {
                                 ]
 
                                 switch (env.LANGUAGE) {
-                                    case 'java':
-                                        echo "Language: Java → compiling with Maven before scan"
-                                        def pomPath = sh(script: "find ${serviceDir} -name 'pom.xml' -maxdepth 3 | head -1", returnStdout: true).trim()
-                                        def pomDir  = pomPath.replace('/pom.xml', '')
+                                    case 'java-maven':
+                                        echo "Language: Java (Maven) → compiling before scan"
+                                        def pomPath = sh(script: "find ${serviceDir} -maxdepth 5 -name 'pom.xml' | head -1", returnStdout: true).trim()
                                         sh "mvn clean compile -f ${pomPath}"
                                         sonarArgs += [
-                                            "-Dsonar.java.binaries=${pomDir}/target/classes",
+                                            "-Dsonar.java.binaries=${pomPath.replace('/pom.xml', '')}/target/classes",
                                             "-Dsonar.java.source=11"
                                         ]
                                         break
+
+                                    case 'java-gradle':
+                                        echo "Language: Java (Gradle) → compiling before scan"
+                                        def gradlePath = sh(script: "find ${serviceDir} -maxdepth 5 -name 'build.gradle' | head -1", returnStdout: true).trim()
+                                        def gradleDir  = gradlePath.replace('/build.gradle', '')
+                                        sh "cd ${gradleDir} && chmod +x gradlew && ./gradlew classes --no-daemon"
+                                        sonarArgs += [
+                                            "-Dsonar.java.binaries=${gradleDir}/build/classes",
+                                            "-Dsonar.java.source=11"
+                                        ]
+                                        break
+
                                     case 'go':
                                         echo "Language: Go → scanning source directly"
                                         break
+
                                     case 'nodejs':
                                         echo "Language: Node.js → scanning source directly"
                                         sonarArgs += [
                                             "-Dsonar.javascript.lcov.reportPaths=${serviceDir}/coverage/lcov.info"
                                         ]
                                         break
+
                                     case 'python':
                                         echo "Language: Python → scanning source directly"
                                         sonarArgs += [
                                             "-Dsonar.python.version=3"
                                         ]
                                         break
+
                                     case 'csharp':
                                         echo "Language: C# → scanning source directly"
                                         break
+
                                     default:
                                         echo "WARNING: Unknown language for ${env.MICROSERVICE} — running generic scan"
                                         break
