@@ -53,11 +53,18 @@ pipeline {
                     def serviceDir = env.SERVICE_PATH
                     def language   = 'unknown'
 
-                    def hasPom     = sh(script: "find ${serviceDir} -name 'pom.xml'     -maxdepth 3 | head -1", returnStdout: true).trim()
-                    def hasGoMod   = sh(script: "find ${serviceDir} -name 'go.mod'      -maxdepth 3 | head -1", returnStdout: true).trim()
-                    def hasPkgJson = sh(script: "find ${serviceDir} -name 'package.json'-maxdepth 3 | head -1", returnStdout: true).trim()
-                    def hasReqs    = sh(script: "find ${serviceDir} -name 'requirements.txt' -maxdepth 3 | head -1", returnStdout: true).trim()
-                    def hasCsproj  = sh(script: "find ${serviceDir} -name '*.csproj'    -maxdepth 3 | head -1", returnStdout: true).trim()
+                    def hasPom     = sh(script: "find ${serviceDir} -maxdepth 5 -name 'pom.xml'          | head -1", returnStdout: true).trim()
+                    def hasGoMod   = sh(script: "find ${serviceDir} -maxdepth 5 -name 'go.mod'           | head -1", returnStdout: true).trim()
+                    def hasPkgJson = sh(script: "find ${serviceDir} -maxdepth 5 -name 'package.json'     | head -1", returnStdout: true).trim()
+                    def hasReqs    = sh(script: "find ${serviceDir} -maxdepth 5 -name 'requirements.txt' | head -1", returnStdout: true).trim()
+                    def hasCsproj  = sh(script: "find ${serviceDir} -maxdepth 5 -name '*.csproj'         | head -1", returnStdout: true).trim()
+
+                    echo "=== Language Detection Results ==="
+                    echo "pom.xml          : ${hasPom     ?: 'not found'}"
+                    echo "go.mod           : ${hasGoMod   ?: 'not found'}"
+                    echo "package.json     : ${hasPkgJson ?: 'not found'}"
+                    echo "requirements.txt : ${hasReqs    ?: 'not found'}"
+                    echo "*.csproj         : ${hasCsproj  ?: 'not found'}"
 
                     if      (hasPom)     { language = 'java'   }
                     else if (hasGoMod)   { language = 'go'     }
@@ -65,9 +72,7 @@ pipeline {
                     else if (hasReqs)    { language = 'python' }
                     else if (hasCsproj)  { language = 'csharp' }
 
-                    env.LANGUAGE    = language
-                    env.SERVICE_DIR = serviceDir  // store for use in SonarQube stage
-
+                    env.LANGUAGE = language
                     echo "Language detected: ${language}"
 
                     // ── Conventional Commits: auto-detect bump type ───────────
