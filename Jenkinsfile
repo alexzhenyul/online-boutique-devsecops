@@ -605,7 +605,7 @@ pipeline {
 
                         sh """
                             git tag "${env.MICROSERVICE}/${env.SEMVER}"
-                            git push origin "${env.MICROSERVICE}/${env.SEMVER}"
+                            git push origin "${env.MICROSERVICE}/${env.SEMVER}" || echo "Tag ${env.MICROSERVICE}/${env.SEMVER} already exists, skipping push"
                         """
                         echo "Git tag created: ${env.MICROSERVICE}/${env.SEMVER}"
                     }
