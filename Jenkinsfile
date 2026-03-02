@@ -528,7 +528,7 @@ pipeline {
                             # ── Dev: pinned to git SHA (triggers ArgoCD on every build) ──
                             cd gitops/k8s/overlays/dev
                             kustomize edit set image \
-                                ${env.ECR_REGISTRY}/${env.ECR_REPO_PREFIX}/${env.MICROSERVICE}:${env.GIT_SHA}
+                                ${env.ECR_REGISTRY}/${env.ECR_REPO_PREFIX}/${env.MICROSERVICE}:${env.GIT_SHORT}
                             cd ../../../..
 
                             # ── Staging: pinned to semver ─────────────────────────
@@ -550,12 +550,12 @@ pipeline {
                             if git diff --cached --quiet; then
                                 echo "No kustomize changes — manifests already up to date"
                             else
-                                git commit -m "ci: update ${env.MICROSERVICE} — dev:${env.GIT_SHA} staging:${env.SEMVER} prod:${env.SEMVER} [skip ci]"
+                                git commit -m "ci: update ${env.MICROSERVICE} — dev:${env.GIT_SHORT} staging:${env.SEMVER} prod:${env.SEMVER} [skip ci]"
                                 git push origin HEAD:main
                             fi
                         """
                         echo "Manifests updated:"
-                        echo "  dev     → ${env.MICROSERVICE}:${env.GIT_SHA}"
+                        echo "  dev     → ${env.MICROSERVICE}:${env.GIT_SHORT}"
                         echo "  staging → ${env.MICROSERVICE}:${env.SEMVER}"
                         echo "  prod    → ${env.MICROSERVICE}:${env.SEMVER}"
                     }
