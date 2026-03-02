@@ -7,6 +7,8 @@ namespace: online-boutique-dev
 images:
 - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/adservice
   newTag: latest
+- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/frontend
+  newTag: latest
 - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/paymentservice
   newTag: latest
 - name: adservice
