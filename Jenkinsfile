@@ -547,8 +547,12 @@ pipeline {
                             git add gitops/k8s/overlays/staging/kustomization.yaml
                             git add gitops/k8s/overlays/prod/kustomization.yaml
 
-                            git commit -m "ci: update ${env.MICROSERVICE} — dev:latest staging:latest prod:${env.SEMVER} [skip ci]"
-                            git push origin HEAD:main
+                            if git diff --cached --quiet; then
+                                echo "No kustomize changes — manifests already up to date"
+                            else
+                                git commit -m "ci: update ${env.MICROSERVICE} — dev:latest staging:latest prod:${env.SEMVER} [skip ci]"
+                                git push origin HEAD:main
+                            fi
                         """
                         echo "Manifests updated:"
                         echo "  dev     → ${env.MICROSERVICE}:latest"
