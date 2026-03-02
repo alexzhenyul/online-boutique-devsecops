@@ -525,16 +525,16 @@ pipeline {
                             
                             git pull origin main
 
-                            # ── Dev: always latest ────────────────────────────────
+                            # ── Dev: pinned to git SHA (triggers ArgoCD on every build) ──
                             cd gitops/k8s/overlays/dev
                             kustomize edit set image \
-                                ${env.ECR_REGISTRY}/${env.ECR_REPO_PREFIX}/${env.MICROSERVICE}:latest
+                                ${env.ECR_REGISTRY}/${env.ECR_REPO_PREFIX}/${env.MICROSERVICE}:${env.GIT_SHA}
                             cd ../../../..
 
-                            # ── Staging: always latest ────────────────────────────
+                            # ── Staging: pinned to semver ─────────────────────────
                             cd gitops/k8s/overlays/staging
                             kustomize edit set image \
-                                ${env.ECR_REGISTRY}/${env.ECR_REPO_PREFIX}/${env.MICROSERVICE}:latest
+                                ${env.ECR_REGISTRY}/${env.ECR_REPO_PREFIX}/${env.MICROSERVICE}:${env.SEMVER}
                             cd ../../../..
 
                             # ── Prod: pinned to exact semver ──────────────────────
@@ -550,13 +550,13 @@ pipeline {
                             if git diff --cached --quiet; then
                                 echo "No kustomize changes — manifests already up to date"
                             else
-                                git commit -m "ci: update ${env.MICROSERVICE} — dev:latest staging:latest prod:${env.SEMVER} [skip ci]"
+                                git commit -m "ci: update ${env.MICROSERVICE} — dev:${env.GIT_SHA} staging:${env.SEMVER} prod:${env.SEMVER} [skip ci]"
                                 git push origin HEAD:main
                             fi
                         """
                         echo "Manifests updated:"
-                        echo "  dev     → ${env.MICROSERVICE}:latest"
-                        echo "  staging → ${env.MICROSERVICE}:latest"
+                        echo "  dev     → ${env.MICROSERVICE}:${env.GIT_SHA}"
+                        echo "  staging → ${env.MICROSERVICE}:${env.SEMVER}"
                         echo "  prod    → ${env.MICROSERVICE}:${env.SEMVER}"
                     }
                 }
