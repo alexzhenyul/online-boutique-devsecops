@@ -5,29 +5,38 @@ namespace: online-boutique-dev
 
 
 images:
-- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/adservice
+- name: adservice
+  newName: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/adservice
   newTag: latest
-- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/cartservice
+- name: cartservice
+  newName: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/cartservice
   newTag: latest
-- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/checkoutservice
+- name: checkoutservice
+  newName: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/checkoutservice
   newTag: latest
-- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/currencyservice
+- name: currencyservice
+  newName: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/currencyservice
   newTag: latest
-- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/emailservice
+- name: emailservice
+  newName: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/emailservice
   newTag: latest
-- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/frontend
+- name: frontend
+  newName: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/frontend
   newTag: latest
-- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/loadgenerator
+- name: loadgenerator
+  newName: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/loadgenerator
   newTag: latest
-- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/paymentservice
+- name: paymentservice
+  newName: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/paymentservice
   newTag: latest
-- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/productcatalogservice
+- name: productcatalogservice
+  newName: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/productcatalogservice
   newTag: latest
-- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/recommendationservice
+- name: recommendationservice
+  newName: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/recommendationservice
   newTag: latest
-- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/shippingservice
-  newTag: latest
-- name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/shoppingassistantservice
+- name: shippingservice
+  newName: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/shippingservice
   newTag: latest
 
 commonLabels:
