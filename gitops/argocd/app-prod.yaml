@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/alexzhenyul/online-boutique-devsecops
     targetRevision: main
-    path: k8s/overlays/prod
+    path: gitops/k8s/overlays/prod
   destination:
     server: https://kubernetes.default.svc
     namespace: online-boutique-prod
