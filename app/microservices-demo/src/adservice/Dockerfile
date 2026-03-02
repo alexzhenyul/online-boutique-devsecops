@@ -14,6 +14,9 @@
 
 FROM --platform=$BUILDPLATFORM eclipse-temurin:24.0.2_12-jdk-noble@sha256:dacac8e9a0df0d2bd24e702b4431132875c249930b70555ebd7ca285b5bee684 AS builder
 
+# Fix CVE-2026-25646: upgrade libpng to 1.6.55-r0+
+RUN apk upgrade --no-cache libpng
+
 WORKDIR /app
 
 COPY ["build.gradle", "gradlew", "./"]
