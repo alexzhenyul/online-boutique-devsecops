@@ -573,9 +573,33 @@ pipeline {
                         sh """
                             git config user.email "jenkins@ci"
                             git config user.name  "Jenkins"
-
                             git remote set-url origin https://\${GIT_USER}:\${GIT_TOKEN}@github.com/${env.GIT_ORG}/${env.GIT_REPO}.git
+                            git fetch --tags
+                        """
 
+                        // Calculate next version from existing git tags
+                        def latestTag = sh(
+                            script: """
+                                git tag --list "${env.MICROSERVICE}/*" \
+                                    | sort -t. -k1,1n -k2,2n -k3,3n \
+                                    | tail -1
+                            """,
+                            returnStdout: true
+                        ).trim()
+
+                        if (latestTag == '') {
+                            env.SEMVER = '0.0.1'
+                        } else {
+                            def version = latestTag.tokenize('/')[1]
+                            def parts   = version.tokenize('.')
+                            def patch   = parts[2].toInteger() + 1
+                            env.SEMVER  = "${parts[0]}.${parts[1]}.${patch}"
+                        }
+
+                        echo "Previous tag: ${latestTag ?: 'none'}"
+                        echo "Next version: ${env.MICROSERVICE}/${env.SEMVER}"
+
+                        sh """
                             git tag "${env.MICROSERVICE}/${env.SEMVER}"
                             git push origin "${env.MICROSERVICE}/${env.SEMVER}"
                         """
