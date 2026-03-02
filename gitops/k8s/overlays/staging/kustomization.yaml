@@ -20,7 +20,7 @@ images:
 - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/loadgenerator
   newTag: latest
 - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/paymentservice
-  newTag: latest
+  newTag: 0.0.4
 - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/productcatalogservice
   newTag: latest
 - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/recommendationservice

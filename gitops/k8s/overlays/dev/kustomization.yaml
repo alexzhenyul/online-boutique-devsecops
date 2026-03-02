@@ -10,7 +10,7 @@ images:
 - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/frontend
   newTag: "null"
 - name: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/paymentservice
-  newTag: latest
+  newTag: f31c516c
 - name: adservice
   newName: 253343486660.dkr.ecr.ap-southeast-4.amazonaws.com/online-boutique/adservice
   newTag: latest
