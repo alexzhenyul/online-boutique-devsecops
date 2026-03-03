@@ -503,6 +503,48 @@ pipeline {
             }
         }
 
+        stage('Push to DockerHub') {
+            when {
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
+            }
+            steps {
+                withCredentials([
+                    usernamePassword(credentialsId: 'docker')
+                ]) {
+                    script {
+                        def dockerImage        = "alexzhenyul/online-boutique-dev:${env.IMAGE_TAG}"
+                        def dockerImageSha     = "alexzhenyul/online-boutique-dev:${env.GIT_SHA}"
+                        def dockerImageLatest  = "alexzhenyul/online-boutique-dev:latest"
+
+                        sh """
+                            echo \$DOCKER_PASSWORD | docker login --username \$DOCKER_USERNAME --password-stdin
+
+                            docker tag ${env.MICROSERVICE}:${env.IMAGE_TAG} ${dockerImage}
+                            docker push ${dockerImage}
+                        """
+
+                        if (env.GIT_SHA) {
+                            sh """
+                                docker tag ${env.MICROSERVICE}:${env.IMAGE_TAG} ${dockerImageSha}
+                                docker push ${dockerImageSha}
+                            """
+                            echo "Pushed SHA tag: ${dockerImageSha}"
+                        }
+
+                        if (env.IMAGE_TAG ==~ /^\d+\.\d+\.\d+$/) {
+                            sh """
+                                docker tag ${env.MICROSERVICE}:${env.IMAGE_TAG} ${dockerImageLatest}
+                                docker push ${dockerImageLatest}
+                            """
+                            echo "Pushed latest tag: ${dockerImageLatest}"
+                        }
+
+                        echo "Successfully pushed: ${dockerImage}"
+                    }
+                }
+            }
+        }
+
         stage('Update Kustomize Manifest') {
             when {
                 expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
