@@ -16,6 +16,11 @@ pipeline {
         // GITHUB   
         GIT_ORG         = 'alexzhenyul'
         GIT_REPO        = 'online-boutique-devsecops'
+
+        // DOCKERHUB  
+        DOCKER_USER    = 'alexzhenyul'
+        DOCKER_REPO    = 'online-boutique-dev'
+        DOCKER_REGISTRY = "${DOCKER_USER}/${DOCKER_REPO}"
     }
 
     stages {
@@ -465,43 +470,43 @@ pipeline {
             }
         }
 
-        stage('Push to ECR') {
-            when {
-                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
-            }
-            steps {
-                withCredentials([
-                    string(credentialsId: 'aws-access-key-id',     variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
-                    script {
-                        sh """
-                            export AWS_ACCESS_KEY_ID=\$AWS_ACCESS_KEY_ID
-                            export AWS_SECRET_ACCESS_KEY=\$AWS_SECRET_ACCESS_KEY
-                            export AWS_DEFAULT_REGION=${AWS_REGION}
+        // stage('Push to ECR') {
+        //     when {
+        //         expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
+        //     }
+        //     steps {
+        //         withCredentials([
+        //             string(credentialsId: 'aws-access-key-id',     variable: 'AWS_ACCESS_KEY_ID'),
+        //             string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+        //         ]) {
+        //             script {
+        //                 sh """
+        //                     export AWS_ACCESS_KEY_ID=\$AWS_ACCESS_KEY_ID
+        //                     export AWS_SECRET_ACCESS_KEY=\$AWS_SECRET_ACCESS_KEY
+        //                     export AWS_DEFAULT_REGION=${AWS_REGION}
 
-                            aws ecr get-login-password --region ${AWS_REGION} | \
-                                docker login --username AWS --password-stdin ${ECR_REGISTRY}
+        //                     aws ecr get-login-password --region ${AWS_REGION} | \
+        //                         docker login --username AWS --password-stdin ${ECR_REGISTRY}
 
-                            docker push ${env.ECR_IMAGE}
-                        """
+        //                     docker push ${env.ECR_IMAGE}
+        //                 """
 
-                        // Only push additional tags if they were set by semver logic
-                        if (env.ECR_IMAGE_SHA) {
-                            sh "docker push ${env.ECR_IMAGE_SHA}"
-                            echo "Pushed SHA tag: ${env.ECR_IMAGE_SHA}"
-                        }
+        //                 // Only push additional tags if they were set by semver logic
+        //                 if (env.ECR_IMAGE_SHA) {
+        //                     sh "docker push ${env.ECR_IMAGE_SHA}"
+        //                     echo "Pushed SHA tag: ${env.ECR_IMAGE_SHA}"
+        //                 }
 
-                        if (env.ECR_IMAGE_LATEST) {
-                            sh "docker push ${env.ECR_IMAGE_LATEST}"
-                            echo "Pushed latest tag: ${env.ECR_IMAGE_LATEST}"
-                        }
+        //                 if (env.ECR_IMAGE_LATEST) {
+        //                     sh "docker push ${env.ECR_IMAGE_LATEST}"
+        //                     echo "Pushed latest tag: ${env.ECR_IMAGE_LATEST}"
+        //                 }
 
-                        echo "Successfully pushed: ${env.ECR_IMAGE}"
-                    }
-                }
-            }
-        }
+        //                 echo "Successfully pushed: ${env.ECR_IMAGE}"
+        //             }
+        //         }
+        //     }
+        // }
 
         stage('Push to DockerHub') {
             when {
@@ -509,15 +514,15 @@ pipeline {
             }
             steps {
                 withCredentials([
-                    usernamePassword(credentialsId: 'docker')
+                    usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')
                 ]) {
                     script {
-                        def dockerImage        = "alexzhenyul/online-boutique-dev:${env.IMAGE_TAG}"
-                        def dockerImageSha     = "alexzhenyul/online-boutique-dev:${env.GIT_SHA}"
-                        def dockerImageLatest  = "alexzhenyul/online-boutique-dev:latest"
+                        def dockerImage       = "${env.DOCKER_REGISTRY}:${env.SEMVER}"
+                        def dockerImageSha    = "${env.DOCKER_REGISTRY}:${env.GIT_SHORT}"
+                        def dockerImageLatest = "${env.DOCKER_REGISTRY}:latest"
 
                         sh """
-                            echo \$DOCKER_PASSWORD | docker login --username \$DOCKER_USERNAME --password-stdin
+                            docker login --username \$DOCKER_USERNAME --password \$DOCKER_PASSWORD
 
                             docker tag ${env.MICROSERVICE}:${env.IMAGE_TAG} ${dockerImage}
                             docker push ${dockerImage}
@@ -647,7 +652,7 @@ pipeline {
 
                         sh """
                             git tag "${env.MICROSERVICE}/${env.SEMVER}"
-                            git push origin "${env.MICROSERVICE}/${env.SEMVER}" || echo "Tag ${env.MICROSERVICE}/${env.SEMVER} already exists, skipping push"
+                            git push origin "${env.MICROSERVICE}/${env.SEMVER}"
                         """
                         echo "Git tag created: ${env.MICROSERVICE}/${env.SEMVER}"
                     }
