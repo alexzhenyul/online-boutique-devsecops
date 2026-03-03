@@ -28,6 +28,14 @@ pipeline {
         stage('Detect Changed Microservice') {
             steps {
                 script {
+                    // ── Skip CI-generated commits to prevent pipeline loops ────────
+                    def commitMsg = sh(script: "git log -1 --pretty=%B HEAD", returnStdout: true).trim()
+                    if (commitMsg.contains('[skip ci]')) {
+                        echo "Skipping CI — commit contains [skip ci]"
+                        currentBuild.result = 'NOT_BUILT'
+                        return
+                    }
+
                     def changedFiles = sh(
                         script: "git diff --name-only HEAD~1 HEAD",
                         returnStdout: true
@@ -83,27 +91,22 @@ pipeline {
                     env.LANGUAGE = language
                     echo "Language detected: ${language}"
 
-                    // ── Conventional Commits: auto-detect bump type ───────────
-                    def commitMsg = sh(
-                        script: "git log -1 --pretty=%B HEAD",
-                        returnStdout: true
-                    ).trim()
-
+                    // ── Conventional Commits: auto-detect bump type ───────────────
+                    // commitMsg already retrieved above — reuse it
                     echo "=== Commit Message ==="
                     echo "${commitMsg}"
 
-                    def bumpType = 'patch' // default
+                    def bumpType = 'patch'
 
                     if (commitMsg.contains('BREAKING CHANGE:') || commitMsg =~ /^[a-z]+(\(.+\))?!:/) {
                         bumpType = 'major'
                     } else if (commitMsg =~ /^feat(\(.+\))?:/) {
                         bumpType = 'minor'
                     }
-                    // fix:, perf:, refactor:, chore:, docs:, style:, test: → patch
 
                     echo "Detected bump type: ${bumpType}"
 
-                    // ── Semver Calculation ────────────────────────────────────
+                    // ── Semver Calculation ────────────────────────────────────────
                     def rawTag = sh(
                         script: """
                             git tag --list "${detectedService}/*" \
@@ -577,19 +580,22 @@ pipeline {
                             # ── Dev: pinned to git SHA (triggers ArgoCD on every build) ──
                             cd gitops/k8s/overlays/dev
                             kustomize edit set image \
-                                ${env.ECR_REGISTRY}/${env.ECR_REPO_PREFIX}/${env.MICROSERVICE}:${env.GIT_SHORT}
+                            #   ${env.ECR_REGISTRY}/${env.ECR_REPO_PREFIX}/${env.MICROSERVICE}:${env.GIT_SHORT}
+                                ${env.DOCKER_REGISTRY}:${env.MICROSERVICE}-${env.GIT_SHORT}
                             cd ../../../..
 
                             # ── Staging: pinned to semver ─────────────────────────
                             cd gitops/k8s/overlays/staging
                             kustomize edit set image \
-                                ${env.ECR_REGISTRY}/${env.ECR_REPO_PREFIX}/${env.MICROSERVICE}:${env.SEMVER}
+                            #   ${env.ECR_REGISTRY}/${env.ECR_REPO_PREFIX}/${env.MICROSERVICE}:${env.SEMVER}
+                                ${env.DOCKER_REGISTRY}:${env.MICROSERVICE}-${env.SEMVER}
                             cd ../../../..
 
                             # ── Prod: pinned to exact semver ──────────────────────
                             cd gitops/k8s/overlays/prod
                             kustomize edit set image \
-                                ${env.ECR_REGISTRY}/${env.ECR_REPO_PREFIX}/${env.MICROSERVICE}:${env.SEMVER}
+                            #   ${env.ECR_REGISTRY}/${env.ECR_REPO_PREFIX}/${env.MICROSERVICE}:${env.SEMVER}
+                                ${env.DOCKER_REGISTRY}:${env.MICROSERVICE}-${env.SEMVER}
                             cd ../../../..
 
                             git add gitops/k8s/overlays/dev/kustomization.yaml
