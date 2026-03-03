@@ -514,7 +514,9 @@ pipeline {
             }
             steps {
                 withCredentials([
-                    usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')
+                    usernamePassword(credentialsId: 'docker',
+                                    usernameVariable: 'DOCKER_USERNAME',
+                                    passwordVariable: 'DOCKER_PASSWORD')
                 ]) {
                     script {
                         def dockerImage       = "${env.DOCKER_REGISTRY}:${env.SEMVER}"
@@ -524,21 +526,21 @@ pipeline {
                         sh """
                             docker login --username \$DOCKER_USERNAME --password \$DOCKER_PASSWORD
 
-                            docker tag ${env.MICROSERVICE}:${env.IMAGE_TAG} ${dockerImage}
+                            docker tag ${env.ECR_IMAGE} ${dockerImage}
                             docker push ${dockerImage}
                         """
 
-                        if (env.GIT_SHA) {
+                        if (env.GIT_SHORT) {
                             sh """
-                                docker tag ${env.MICROSERVICE}:${env.IMAGE_TAG} ${dockerImageSha}
+                                docker tag ${env.ECR_IMAGE} ${dockerImageSha}
                                 docker push ${dockerImageSha}
                             """
                             echo "Pushed SHA tag: ${dockerImageSha}"
                         }
 
-                        if (env.IMAGE_TAG ==~ /^\d+\.\d+\.\d+$/) {
+                        if (env.SEMVER ==~ /^\d+\.\d+\.\d+$/) {
                             sh """
-                                docker tag ${env.MICROSERVICE}:${env.IMAGE_TAG} ${dockerImageLatest}
+                                docker tag ${env.ECR_IMAGE} ${dockerImageLatest}
                                 docker push ${dockerImageLatest}
                             """
                             echo "Pushed latest tag: ${dockerImageLatest}"
