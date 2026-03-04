@@ -1,4 +1,4 @@
-# 🛡️ Online Boutique — Production DevSecOps Pipeline
+# Online Boutique — Production DevSecOps Pipeline
 
 > A production-grade DevSecOps implementation built on top of Google's [Online Boutique](https://github.com/GoogleCloudPlatform/microservices-demo) microservices demo — demonstrating a complete, secure software delivery lifecycle with automated CI security gates, GitOps-driven deployment, Infrastructure as Code, and full-stack observability.
 
@@ -6,36 +6,36 @@
 
 ## 📌 Table of Contents
 
-- [🛡️ Online Boutique — Production DevSecOps Pipeline](#️-online-boutique--production-devsecops-pipeline)
+- [Online Boutique — Production DevSecOps Pipeline](#online-boutique--production-devsecops-pipeline)
   - [📌 Table of Contents](#-table-of-contents)
-  - [📖 Project Overview](#-project-overview)
+  - [Project Overview](#project-overview)
   - [🏗️ Architecture](#️-architecture)
-  - [🧰 Tech Stack](#-tech-stack)
-  - [📁 Repository Structure](#-repository-structure)
-  - [🔄 CI Pipeline — Jenkins](#-ci-pipeline--jenkins)
+  - [Tech Stack](#tech-stack)
+  - [Repository Structure](#repository-structure)
+  - [CI Pipeline — Jenkins](#ci-pipeline--jenkins)
     - [Smart Change Detection](#smart-change-detection)
     - [Automated Versioning](#automated-versioning)
     - [Security Stages](#security-stages)
     - [Build \& Publish](#build--publish)
     - [GitOps Update](#gitops-update)
     - [Email Notifications](#email-notifications)
-  - [🔁 CD — ArgoCD GitOps](#-cd--argocd-gitops)
-  - [☁️ Infrastructure — Terraform](#️-infrastructure--terraform)
-  - [📊 Monitoring \& Observability](#-monitoring--observability)
-  - [🔐 Security Implementation](#-security-implementation)
-  - [🚀 Getting Started](#-getting-started)
+  - [CD — ArgoCD GitOps](#cd--argocd-gitops)
+  - [Infrastructure — Terraform](#infrastructure--terraform)
+  - [Monitoring \& Observability](#monitoring--observability)
+  - [Security Implementation](#security-implementation)
+  - [Getting Started](#getting-started)
     - [Prerequisites](#prerequisites)
     - [1. Provision Infrastructure](#1-provision-infrastructure)
     - [2. Configure kubectl](#2-configure-kubectl)
     - [3. Install ArgoCD](#3-install-argocd)
     - [4. Bootstrap Applications](#4-bootstrap-applications)
     - [5. Configure Jenkins Credentials](#5-configure-jenkins-credentials)
-  - [🗺️ Roadmap](#️-roadmap)
-  - [📄 Section READMEs](#-section-readmes)
+  - [Roadmap](#roadmap)
+  - [Section READMEs](#section-readmes)
 
 ---
 
-## 📖 Project Overview
+## Project Overview
 
 This project demonstrates a **production-ready DevSecOps pipeline** for a cloud-native microservices application. Security is embedded at every stage of the SDLC — from the first `git push` through to runtime — using industry-standard open-source tooling on AWS.
 
@@ -97,7 +97,7 @@ The application workload is **Google's Online Boutique**, an 11-microservice e-c
 
 ---
 
-## 🧰 Tech Stack
+## Tech Stack
 
 | Category | Tool | Role |
 |---|---|---|
@@ -120,7 +120,7 @@ The application workload is **Google's Online Boutique**, an 11-microservice e-c
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```
 online-boutique-devsecops/
@@ -160,7 +160,7 @@ online-boutique-devsecops/
 
 ---
 
-## 🔄 CI Pipeline — Jenkins
+## CI Pipeline — Jenkins
 
 The pipeline is defined in the root `Jenkinsfile` and runs on every push to `main`. It detects **which microservice changed**, runs all security checks scoped to that service, and produces a versioned, fully-scanned image — automatically.
 
@@ -232,7 +232,7 @@ On every pipeline completion (success or failure), an **HTML summary email** is 
 
 ---
 
-## 🔁 CD — ArgoCD GitOps
+## CD — ArgoCD GitOps
 
 The CI pipeline **never deploys directly to Kubernetes**. It only commits updated image tags to `gitops/` and lets ArgoCD take over:
 
@@ -254,7 +254,7 @@ Every production deployment is backed by a Git commit — fully auditable, insta
 
 ---
 
-## ☁️ Infrastructure — Terraform
+## Infrastructure — Terraform
 
 All AWS infrastructure is defined in `infra/` — no manual console changes. Every resource is tracked, versioned, and fully reproducible.
 
@@ -270,7 +270,7 @@ All AWS infrastructure is defined in `infra/` — no manual console changes. Eve
 
 ---
 
-## 📊 Monitoring & Observability
+## Monitoring & Observability
 
 The monitoring stack is deployed into EKS using the **kube-prometheus-stack** Helm chart.
 
@@ -290,7 +290,7 @@ The monitoring stack is deployed into EKS using the **kube-prometheus-stack** He
 
 ---
 
-## 🔐 Security Implementation
+## Security Implementation
 
 Security is layered across every part of the stack:
 
@@ -317,7 +317,7 @@ Security is layered across every part of the stack:
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -378,7 +378,7 @@ Point Jenkins at this repository with the root `Jenkinsfile`. Configure a GitHub
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
 - [ ] Enable ECR push (currently commented out in favour of Docker Hub for dev)
 - [ ] DAST integration — OWASP ZAP as a post-deployment pipeline stage
@@ -390,7 +390,7 @@ Point Jenkins at this repository with the root `Jenkinsfile`. Configure a GitHub
 
 ---
 
-## 📄 Section READMEs
+## Section READMEs
 
 | Section | Description |
 |---|---|
