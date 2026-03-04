@@ -4,12 +4,12 @@
 
 ---
 
-## 📌 Table of Contents
+## Table of Contents
 
 - [Online Boutique — Production DevSecOps Pipeline](#online-boutique--production-devsecops-pipeline)
-  - [📌 Table of Contents](#-table-of-contents)
+  - [Table of Contents](#table-of-contents)
   - [Project Overview](#project-overview)
-  - [🏗️ Architecture](#️-architecture)
+  - [Architecture](#architecture)
   - [Tech Stack](#tech-stack)
   - [Repository Structure](#repository-structure)
   - [CI Pipeline — Jenkins](#ci-pipeline--jenkins)
@@ -49,7 +49,7 @@ The application workload is **Google's Online Boutique**, an 11-microservice e-c
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
