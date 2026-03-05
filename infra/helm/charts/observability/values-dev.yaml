@@ -1,0 +1,95 @@
+# Observability Stack - Development Environment Values
+# Lightweight configuration for local/dev environments
+
+# Prometheus Stack - Reduced resources
+prometheus:
+  enabled: true
+
+  prometheus:
+    prometheusSpec:
+      retention: 3d
+      retentionSize: "5GB"
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            resources:
+              requests:
+                storage: 5Gi
+
+  alertmanager:
+    enabled: true
+    alertmanagerSpec:
+      resources:
+        requests:
+          cpu: 25m
+          memory: 32Mi
+        limits:
+          cpu: 50m
+          memory: 64Mi
+      storage:
+        volumeClaimTemplate:
+          spec:
+            resources:
+              requests:
+                storage: 1Gi
+
+  grafana:
+    enabled: true
+    adminPassword: "admin"  # Only for dev!
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    persistence:
+      enabled: false  # Ephemeral in dev
+
+  nodeExporter:
+    enabled: true
+    resources:
+      requests:
+        cpu: 25m
+        memory: 16Mi
+      limits:
+        cpu: 50m
+        memory: 32Mi
+
+  kubeStateMetrics:
+    enabled: true
+    resources:
+      requests:
+        cpu: 25m
+        memory: 32Mi
+      limits:
+        cpu: 50m
+        memory: 64Mi
+
+# Loki - Minimal setup
+loki:
+  enabled: true
+  loki:
+    limits_config:
+      retention_period: 24h  # 1 day only in dev
+
+  promtail:
+    enabled: true
+    resources:
+      requests:
+        cpu: 25m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+
+# Tempo - Disabled in dev by default
+tempo:
+  enabled: false

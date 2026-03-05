@@ -1,0 +1,44 @@
+# Observability Stack - Umbrella Helm Chart
+# This chart deploys a complete observability stack using sub-charts
+apiVersion: v2
+name: observability-stack
+description: Observability stack (Prometheus, Grafana, Loki, Alertmanager)
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - observability
+  - monitoring
+  - logging
+  - prometheus
+  - grafana
+  - loki
+  - alertmanager
+
+maintainers:
+  - name: Alex Liang
+    email: zhenyu.alexl@gmail.com
+
+# Dependencies - Official Helm charts
+dependencies:
+  # Prometheus Stack (includes Prometheus, Alertmanager, Grafana, node-exporter)
+  - name: kube-prometheus-stack
+    version: "55.5.0"
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: prometheus.enabled
+    alias: prometheus
+
+  # Loki for log aggregation
+  - name: loki-stack
+    version: "2.10.1"
+    repository: https://grafana.github.io/helm-charts
+    condition: loki.enabled
+    alias: loki
+
+  # Tempo for distributed tracing
+  - name: tempo
+    version: "1.7.1"
+    repository: https://grafana.github.io/helm-charts
+    condition: tempo.enabled
+    alias: tempo
