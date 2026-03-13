@@ -473,87 +473,87 @@ pipeline {
             }
         }
 
-        // stage('Push to ECR') {
-        //     when {
-        //         expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
-        //     }
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'aws-access-key-id',     variable: 'AWS_ACCESS_KEY_ID'),
-        //             string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
-        //         ]) {
-        //             script {
-        //                 sh """
-        //                     export AWS_ACCESS_KEY_ID=\$AWS_ACCESS_KEY_ID
-        //                     export AWS_SECRET_ACCESS_KEY=\$AWS_SECRET_ACCESS_KEY
-        //                     export AWS_DEFAULT_REGION=${AWS_REGION}
-
-        //                     aws ecr get-login-password --region ${AWS_REGION} | \
-        //                         docker login --username AWS --password-stdin ${ECR_REGISTRY}
-
-        //                     docker push ${env.ECR_IMAGE}
-        //                 """
-
-        //                 // Only push additional tags if they were set by semver logic
-        //                 if (env.ECR_IMAGE_SHA) {
-        //                     sh "docker push ${env.ECR_IMAGE_SHA}"
-        //                     echo "Pushed SHA tag: ${env.ECR_IMAGE_SHA}"
-        //                 }
-
-        //                 if (env.ECR_IMAGE_LATEST) {
-        //                     sh "docker push ${env.ECR_IMAGE_LATEST}"
-        //                     echo "Pushed latest tag: ${env.ECR_IMAGE_LATEST}"
-        //                 }
-
-        //                 echo "Successfully pushed: ${env.ECR_IMAGE}"
-        //             }
-        //         }
-        //     }
-        // }
-
-        stage('Push to DockerHub') {
+        stage('Push to ECR') {
             when {
                 expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
             }
             steps {
                 withCredentials([
-                    usernamePassword(credentialsId: 'docker',
-                                    usernameVariable: 'DOCKER_USERNAME',
-                                    passwordVariable: 'DOCKER_PASSWORD')
+                    string(credentialsId: 'aws-access-key-id',     variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
                     script {
-                        def dockerImage       = "${env.DOCKER_REGISTRY}:${env.SEMVER}"
-                        def dockerImageSha    = "${env.DOCKER_REGISTRY}:${env.GIT_SHORT}"
-                        def dockerImageLatest = "${env.DOCKER_REGISTRY}:latest"
-
                         sh """
-                            docker login --username \$DOCKER_USERNAME --password \$DOCKER_PASSWORD
+                            export AWS_ACCESS_KEY_ID=\$AWS_ACCESS_KEY_ID
+                            export AWS_SECRET_ACCESS_KEY=\$AWS_SECRET_ACCESS_KEY
+                            export AWS_DEFAULT_REGION=${AWS_REGION}
 
-                            docker tag ${env.ECR_IMAGE} ${dockerImage}
-                            docker push ${dockerImage}
+                            aws ecr get-login-password --region ${AWS_REGION} | \
+                                docker login --username AWS --password-stdin ${ECR_REGISTRY}
+
+                            docker push ${env.ECR_IMAGE}
                         """
 
-                        if (env.GIT_SHORT) {
-                            sh """
-                                docker tag ${env.ECR_IMAGE} ${dockerImageSha}
-                                docker push ${dockerImageSha}
-                            """
-                            echo "Pushed SHA tag: ${dockerImageSha}"
+                        // Only push additional tags if they were set by semver logic
+                        if (env.ECR_IMAGE_SHA) {
+                            sh "docker push ${env.ECR_IMAGE_SHA}"
+                            echo "Pushed SHA tag: ${env.ECR_IMAGE_SHA}"
                         }
 
-                        if (env.SEMVER ==~ /^\d+\.\d+\.\d+$/) {
-                            sh """
-                                docker tag ${env.ECR_IMAGE} ${dockerImageLatest}
-                                docker push ${dockerImageLatest}
-                            """
-                            echo "Pushed latest tag: ${dockerImageLatest}"
+                        if (env.ECR_IMAGE_LATEST) {
+                            sh "docker push ${env.ECR_IMAGE_LATEST}"
+                            echo "Pushed latest tag: ${env.ECR_IMAGE_LATEST}"
                         }
 
-                        echo "Successfully pushed: ${dockerImage}"
+                        echo "Successfully pushed: ${env.ECR_IMAGE}"
                     }
                 }
             }
         }
+
+        // stage('Push to DockerHub') {
+        //     when {
+        //         expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
+        //     }
+        //     steps {
+        //         withCredentials([
+        //             usernamePassword(credentialsId: 'docker',
+        //                             usernameVariable: 'DOCKER_USERNAME',
+        //                             passwordVariable: 'DOCKER_PASSWORD')
+        //         ]) {
+        //             script {
+        //                 def dockerImage       = "${env.DOCKER_REGISTRY}:${env.SEMVER}"
+        //                 def dockerImageSha    = "${env.DOCKER_REGISTRY}:${env.GIT_SHORT}"
+        //                 def dockerImageLatest = "${env.DOCKER_REGISTRY}:latest"
+
+        //                 sh """
+        //                     docker login --username \$DOCKER_USERNAME --password \$DOCKER_PASSWORD
+
+        //                     docker tag ${env.ECR_IMAGE} ${dockerImage}
+        //                     docker push ${dockerImage}
+        //                 """
+
+        //                 if (env.GIT_SHORT) {
+        //                     sh """
+        //                         docker tag ${env.ECR_IMAGE} ${dockerImageSha}
+        //                         docker push ${dockerImageSha}
+        //                     """
+        //                     echo "Pushed SHA tag: ${dockerImageSha}"
+        //                 }
+
+        //                 if (env.SEMVER ==~ /^\d+\.\d+\.\d+$/) {
+        //                     sh """
+        //                         docker tag ${env.ECR_IMAGE} ${dockerImageLatest}
+        //                         docker push ${dockerImageLatest}
+        //                     """
+        //                     echo "Pushed latest tag: ${dockerImageLatest}"
+        //                 }
+
+        //                 echo "Successfully pushed: ${dockerImage}"
+        //             }
+        //         }
+        //     }
+        // }
 
         stage('Update Kustomize Manifest') {
             when {
