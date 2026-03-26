@@ -1,26 +1,50 @@
+// ============================================================================
+//  DevSecOps CI Pipeline — online-boutique 
+// ============================================================================
+
 pipeline {
     agent any
 
+    parameters {
+        choice(
+            name: 'DEPLOY_ENV',
+            choices: ['dev', 'staging', 'prod'],
+            description: 'Target environment. prod enforces ALL stages — skip flags are ignored.'
+        )
+        booleanParam(
+            name: 'SKIP_ALL',
+            defaultValue: false,
+            description: 'Skip ALL scan stages (dev/staging only). Overrides all individual skip flags.'
+        )
+        booleanParam(name: 'SKIP_SECRET_SCAN',    defaultValue: false, description: 'Skip Gitleaks')
+        booleanParam(name: 'SKIP_UNIT_TESTS',     defaultValue: false, description: 'Skip unit + integration tests')
+        booleanParam(name: 'SKIP_SAST',           defaultValue: false, description: 'Skip SAST (Semgrep + SonarQube)')
+        booleanParam(name: 'SKIP_SCA',            defaultValue: false, description: 'Skip SCA (OWASP + Trivy FS)')
+        booleanParam(name: 'SKIP_IAC',            defaultValue: false, description: 'Skip IaC scans (Checkov + tfsec)')
+        booleanParam(name: 'SKIP_IMAGE_SECURITY', defaultValue: false, description: 'Skip image scans (Trivy Image + Dockle)')
+        booleanParam(name: 'SKIP_SBOM',           defaultValue: false, description: 'Skip SBOM (Syft + Grype + License)')
+        booleanParam(name: 'SKIP_POLICY',         defaultValue: false, description: 'Skip Policy-as-Code (Conftest + Kubesec)')
+        booleanParam(name: 'SKIP_SIGN',           defaultValue: false, description: 'Skip image signing (Cosign)')
+        booleanParam(name: 'SKIP_DAST',           defaultValue: false, description: 'Skip DAST ZAP (staging-targeted only)')
+    }
+
     environment {
-        // AWS & ECR
+        // ECR
         AWS_REGION      = 'ap-southeast-4'
         ECR_REGISTRY    = '253343486660.dkr.ecr.ap-southeast-4.amazonaws.com'
         ECR_REPO_PREFIX = 'online-boutique'
         
-        // OWASP
+        // OWASP Dependency Check local data cache
         DC_DATA_DIR     = '/var/lib/jenkins/dependency-check-data'
 
-        // EMAIL
+        // Notifications
         EMAIL_RECIPIENTS = 'zhenyu.alexl@gmail.com,lzyx0207@gmail.com'
 
         // GITHUB   
         GIT_ORG         = 'alexzhenyul'
         GIT_REPO        = 'online-boutique-devsecops'
 
-        // DOCKERHUB  
-        DOCKER_USER    = 'alexzhenyul'
-        DOCKER_REPO    = 'online-boutique-dev'
-        DOCKER_REGISTRY = "${DOCKER_USER}/${DOCKER_REPO}"
+        SRC_PATH_FILTER = 'app/microservices-demo/src'
     }
 
     stages {
@@ -510,50 +534,6 @@ pipeline {
                 }
             }
         }
-
-        // stage('Push to DockerHub') {
-        //     when {
-        //         expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
-        //     }
-        //     steps {
-        //         withCredentials([
-        //             usernamePassword(credentialsId: 'docker',
-        //                             usernameVariable: 'DOCKER_USERNAME',
-        //                             passwordVariable: 'DOCKER_PASSWORD')
-        //         ]) {
-        //             script {
-        //                 def dockerImage       = "${env.DOCKER_REGISTRY}:${env.SEMVER}"
-        //                 def dockerImageSha    = "${env.DOCKER_REGISTRY}:${env.GIT_SHORT}"
-        //                 def dockerImageLatest = "${env.DOCKER_REGISTRY}:latest"
-
-        //                 sh """
-        //                     docker login --username \$DOCKER_USERNAME --password \$DOCKER_PASSWORD
-
-        //                     docker tag ${env.ECR_IMAGE} ${dockerImage}
-        //                     docker push ${dockerImage}
-        //                 """
-
-        //                 if (env.GIT_SHORT) {
-        //                     sh """
-        //                         docker tag ${env.ECR_IMAGE} ${dockerImageSha}
-        //                         docker push ${dockerImageSha}
-        //                     """
-        //                     echo "Pushed SHA tag: ${dockerImageSha}"
-        //                 }
-
-        //                 if (env.SEMVER ==~ /^\d+\.\d+\.\d+$/) {
-        //                     sh """
-        //                         docker tag ${env.ECR_IMAGE} ${dockerImageLatest}
-        //                         docker push ${dockerImageLatest}
-        //                     """
-        //                     echo "Pushed latest tag: ${dockerImageLatest}"
-        //                 }
-
-        //                 echo "Successfully pushed: ${dockerImage}"
-        //             }
-        //         }
-        //     }
-        // }
 
         stage('Update Kustomize Manifest') {
             when {
