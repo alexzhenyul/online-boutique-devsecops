@@ -1,0 +1,383 @@
+# Observability Stack - Default Values
+# Override these values per environment (dev, staging, prod)
+
+# ===========================================
+# Global Settings
+# ===========================================
+global:
+  # Storage class for persistent volumes
+  storageClass: ""
+  # Image pull secrets if using private registry
+  imagePullSecrets: []
+
+# ===========================================
+# Prometheus Stack Configuration
+# ===========================================
+prometheus:
+  enabled: true
+
+  # Prometheus Operator
+  prometheusOperator:
+    enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+  # Prometheus Server
+  prometheus:
+    prometheusSpec:
+      # Retention period
+      retention: 15d
+      retentionSize: "10GB"
+
+      # Resource limits
+      resources:
+        requests:
+          cpu: 200m
+          memory: 512Mi
+        limits:
+          cpu: 1000m
+          memory: 2Gi
+
+      # Storage configuration
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 20Gi
+
+      # Service monitor selector - scrape all namespaces
+      serviceMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelectorNilUsesHelmValues: false
+
+      # Additional scrape configs for custom targets
+      additionalScrapeConfigs:
+        - job_name: 'user-service'
+          kubernetes_sd_configs:
+            - role: pod
+          relabel_configs:
+            - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+              action: keep
+              regex: true
+            - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+              action: replace
+              target_label: __metrics_path__
+              regex: (.+)
+            - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+              action: replace
+              regex: ([^:]+)(?::\d+)?;(\d+)
+              replacement: $1:$2
+              target_label: __address__
+
+  # Alertmanager
+  alertmanager:
+    enabled: true
+    alertmanagerSpec:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+      storage:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 5Gi
+
+    # Alert routing configuration
+    config:
+      global:
+        resolve_timeout: 5m
+      route:
+        group_by: ['alertname', 'namespace', 'severity']
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 12h
+        receiver: 'default-receiver'
+        routes:
+          - match:
+              severity: critical
+            receiver: 'critical-receiver'
+            continue: true
+          - match:
+              severity: warning
+            receiver: 'warning-receiver'
+      receivers:
+        - name: 'default-receiver'
+          # Configure slack, email, pagerduty, etc.
+        - name: 'critical-receiver'
+          # Configure for critical alerts
+        - name: 'warning-receiver'
+          # Configure for warning alerts
+
+  # Grafana
+  grafana:
+    enabled: true
+    adminPassword: "" # Set via secret in production
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+    persistence:
+      enabled: true
+      size: 5Gi
+
+    # Default dashboards
+    dashboardProviders:
+      dashboardproviders.yaml:
+        apiVersion: 1
+        providers:
+          - name: 'default'
+            orgId: 1
+            folder: 'DevSecOps'
+            type: file
+            disableDeletion: false
+            editable: true
+            options:
+              path: /var/lib/grafana/dashboards/default
+
+    # Pre-configured dashboards
+    dashboards:
+      default:
+        # Kubernetes cluster monitoring
+        kubernetes-cluster:
+          gnetId: 7249
+          revision: 1
+          datasource: Prometheus
+        # Node exporter
+        node-exporter:
+          gnetId: 1860
+          revision: 32
+          datasource: Prometheus
+        # Application metrics
+        application-metrics:
+          gnetId: 14314
+          revision: 2
+          datasource: Prometheus
+
+    # Additional data sources
+    additionalDataSources:
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki:3100
+        jsonData:
+          maxLines: 1000
+      - name: Tempo
+        type: tempo
+        access: proxy
+        url: http://tempo:3100
+
+    # Sidecar for dashboard auto-discovery
+    sidecar:
+      dashboards:
+        enabled: true
+        label: grafana_dashboard
+      datasources:
+        enabled: true
+        label: grafana_datasource
+
+  # Node Exporter
+  nodeExporter:
+    enabled: true
+    resources:
+      requests:
+        cpu: 50m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+
+  # Kube State Metrics
+  kubeStateMetrics:
+    enabled: true
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+
+  # Default alerting rules
+  defaultRules:
+    create: true
+    rules:
+      alertmanager: true
+      etcd: false  # Disable if not managing etcd
+      kubernetesApps: true
+      kubernetesResources: true
+      kubernetesStorage: true
+      kubernetesSystem: true
+      node: true
+      prometheus: true
+
+# ===========================================
+# Loki Stack Configuration (Logging)
+# ===========================================
+loki:
+  enabled: true
+
+  loki:
+    auth_enabled: false
+
+    storage:
+      type: filesystem
+
+    commonConfig:
+      replication_factor: 1
+
+    schemaConfig:
+      configs:
+        - from: 2024-01-01
+          store: boltdb-shipper
+          object_store: filesystem
+          schema: v12
+          index:
+            prefix: index_
+            period: 24h
+
+    limits_config:
+      retention_period: 168h  # 7 days
+      ingestion_rate_mb: 10
+      ingestion_burst_size_mb: 20
+      max_streams_per_user: 10000
+
+  # Promtail for log collection
+  promtail:
+    enabled: true
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+    config:
+      clients:
+        - url: http://loki:3100/loki/api/v1/push
+
+      snippets:
+        pipelineStages:
+          - cri: {}
+          - json:
+              expressions:
+                level: level
+                msg: msg
+          - labels:
+              level:
+
+# ===========================================
+# Tempo Configuration (Tracing)
+# ===========================================
+tempo:
+  enabled: false  # Enable when needed
+
+  tempo:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+    storage:
+      trace:
+        backend: local
+        local:
+          path: /var/tempo/traces
+        wal:
+          path: /var/tempo/wal
+
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+# ===========================================
+# Custom Alerting Rules
+# ===========================================
+customRules:
+  # Application-specific alerts
+  applicationAlerts:
+    - alert: HighErrorRate
+      expr: |
+        sum(rate(http_requests_total{status=~"5.."}[5m])) by (service)
+        /
+        sum(rate(http_requests_total[5m])) by (service)
+        > 0.05
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "High error rate detected"
+        description: "Service {{ $labels.service }} has error rate > 5%"
+
+    - alert: HighLatency
+      expr: |
+        histogram_quantile(0.95,
+          sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service)
+        ) > 1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High latency detected"
+        description: "Service {{ $labels.service }} p95 latency > 1s"
+
+    - alert: PodCrashLooping
+      expr: |
+        rate(kube_pod_container_status_restarts_total[15m]) * 60 * 15 > 3
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Pod crash looping"
+        description: "Pod {{ $labels.pod }} in {{ $labels.namespace }} restarted > 3 times in 15min"
+
+    - alert: HighMemoryUsage
+      expr: |
+        container_memory_usage_bytes{container!=""}
+        /
+        container_spec_memory_limit_bytes{container!=""}
+        > 0.9
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High memory usage"
+        description: "Container {{ $labels.container }} using > 90% memory"
+
+    - alert: PersistentVolumeAlmostFull
+      expr: |
+        kubelet_volume_stats_available_bytes
+        /
+        kubelet_volume_stats_capacity_bytes
+        < 0.1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "PV almost full"
+        description: "PersistentVolume {{ $labels.persistentvolumeclaim }} is > 90% full"
