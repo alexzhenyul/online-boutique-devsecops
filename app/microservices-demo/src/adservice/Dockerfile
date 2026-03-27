@@ -25,10 +25,10 @@ COPY . .
 RUN chmod +x gradlew
 RUN ./gradlew installDist
 
-FROM eclipse-temurin:25.0.1_8-jre-alpine@sha256:9c65fe190cb22ba92f50b8d29a749d0f1cfb2437e09fe5fbf9ff927c45fc6e99
+FROM eclipse-temurin:25-jre-alpine-3.23
 
 # Fix CVE-2026-25646: upgrade libpng to 1.6.55-r0+
-RUN apk upgrade --no-cache libpng
+RUN apk update && apk upgrade --no-cache
 
 
 # @TODO: https://github.com/GoogleCloudPlatform/microservices-demo/issues/2517
