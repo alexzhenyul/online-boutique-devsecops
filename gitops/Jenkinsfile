@@ -184,14 +184,9 @@ pipeline {
             }
         }
 
-        // ── SECURITY SCAN STAGES (all guarded by SKIP_ALL + individual flags) ──
-
         stage('Secret Scanning - Gitleaks') {
             when {
-                expression {
-                    env.MICROSERVICE != null && env.MICROSERVICE != '' &&
-                    !params.SKIP_ALL && !params.SKIP_SECRET_SCAN
-                }
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
             }
             steps {
                 script {
@@ -224,85 +219,79 @@ pipeline {
         }
 
         stage('SAST - SonarQube Analysis') {
-            when {
-                expression {
-                    env.MICROSERVICE != null && env.MICROSERVICE != '' &&
-                    !params.SKIP_ALL && !params.SKIP_SAST
-                }
-            }
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    script {
-                        def serviceDir = "app/microservices-demo/src/${env.MICROSERVICE}"
+                    when {
+                        expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
+                    }
+                    steps {
+                        withSonarQubeEnv('SonarQube') {
+                            script {
+                                def serviceDir = "app/microservices-demo/src/${env.MICROSERVICE}"
 
-                        def sonarArgs = [
-                            "-Dsonar.projectKey=${env.MICROSERVICE}",
-                            "-Dsonar.projectName=${env.MICROSERVICE}",
-                            "-Dsonar.sources=${serviceDir}",
-                            "-Dsonar.projectVersion=${env.GIT_SHORT}"
-                        ]
-
-                        switch (env.LANGUAGE) {
-                            case 'java-maven':
-                                echo "Language: Java (Maven) → compiling before scan"
-                                def pomPath = sh(script: "find ${serviceDir} -maxdepth 5 -name 'pom.xml' | head -1", returnStdout: true).trim()
-                                sh "mvn clean compile -f ${pomPath}"
-                                sonarArgs += [
-                                    "-Dsonar.java.binaries=${pomPath.replace('/pom.xml', '')}/target/classes",
-                                    "-Dsonar.java.source=11"
+                                def sonarArgs = [
+                                    "-Dsonar.projectKey=${env.MICROSERVICE}",
+                                    "-Dsonar.projectName=${env.MICROSERVICE}",
+                                    "-Dsonar.sources=${serviceDir}",
+                                    "-Dsonar.projectVersion=${env.GIT_SHORT}"
                                 ]
-                                break
 
-                            case 'java-gradle':
-                                echo "Language: Java (Gradle) → compiling before scan"
-                                def gradlePath = sh(script: "find ${serviceDir} -maxdepth 5 -name 'build.gradle' | head -1", returnStdout: true).trim()
-                                def gradleDir  = gradlePath.replace('/build.gradle', '')
-                                sh "cd ${gradleDir} && chmod +x gradlew && ./gradlew classes --no-daemon"
-                                sonarArgs += [
-                                    "-Dsonar.java.binaries=${gradleDir}/build/classes",
-                                    "-Dsonar.java.source=21"
-                                ]
-                                break
+                                switch (env.LANGUAGE) {
+                                    case 'java-maven':
+                                        echo "Language: Java (Maven) → compiling before scan"
+                                        def pomPath = sh(script: "find ${serviceDir} -maxdepth 5 -name 'pom.xml' | head -1", returnStdout: true).trim()
+                                        sh "mvn clean compile -f ${pomPath}"
+                                        sonarArgs += [
+                                            "-Dsonar.java.binaries=${pomPath.replace('/pom.xml', '')}/target/classes",
+                                            "-Dsonar.java.source=11"
+                                        ]
+                                        break
 
-                            case 'go':
-                                echo "Language: Go → scanning source directly"
-                                break
+                                    case 'java-gradle':
+                                        echo "Language: Java (Gradle) → compiling before scan"
+                                        def gradlePath = sh(script: "find ${serviceDir} -maxdepth 5 -name 'build.gradle' | head -1", returnStdout: true).trim()
+                                        def gradleDir  = gradlePath.replace('/build.gradle', '')
+                                        sh "cd ${gradleDir} && chmod +x gradlew && ./gradlew classes --no-daemon"
+                                        sonarArgs += [
+                                            "-Dsonar.java.binaries=${gradleDir}/build/classes",
+                                            "-Dsonar.java.source=21"
+                                        ]
+                                        break
 
-                            case 'nodejs':
-                                echo "Language: Node.js → scanning source directly"
-                                sonarArgs += [
-                                    "-Dsonar.javascript.lcov.reportPaths=${serviceDir}/coverage/lcov.info"
-                                ]
-                                break
+                                    case 'go':
+                                        echo "Language: Go → scanning source directly"
+                                        break
 
-                            case 'python':
-                                echo "Language: Python → scanning source directly"
-                                sonarArgs += [
-                                    "-Dsonar.python.version=3"
-                                ]
-                                break
+                                    case 'nodejs':
+                                        echo "Language: Node.js → scanning source directly"
+                                        sonarArgs += [
+                                            "-Dsonar.javascript.lcov.reportPaths=${serviceDir}/coverage/lcov.info"
+                                        ]
+                                        break
 
-                            case 'csharp':
-                                echo "Language: C# → scanning source directly"
-                                break
+                                    case 'python':
+                                        echo "Language: Python → scanning source directly"
+                                        sonarArgs += [
+                                            "-Dsonar.python.version=3"
+                                        ]
+                                        break
 
-                            default:
-                                echo "WARNING: Unknown language for ${env.MICROSERVICE} — running generic scan"
-                                break
+                                    case 'csharp':
+                                        echo "Language: C# → scanning source directly"
+                                        break
+
+                                    default:
+                                        echo "WARNING: Unknown language for ${env.MICROSERVICE} — running generic scan"
+                                        break
+                                }
+
+                                sh "sonar-scanner ${sonarArgs.join(' \\\n    ')}"
+                            }
                         }
-
-                        sh "sonar-scanner ${sonarArgs.join(' \\\n    ')}"
                     }
                 }
-            }
-        }
 
         stage('SonarQube Quality Gate') {
             when {
-                expression {
-                    env.MICROSERVICE != null && env.MICROSERVICE != '' &&
-                    !params.SKIP_ALL && !params.SKIP_SAST
-                }
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
             }
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
@@ -313,10 +302,7 @@ pipeline {
 
         stage('SCA - OWASP Dependency Check') {
             when {
-                expression {
-                    env.MICROSERVICE != null && env.MICROSERVICE != '' &&
-                    !params.SKIP_ALL && !params.SKIP_SCA
-                }
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
             }
             steps {
                 withCredentials([string(credentialsId: 'NVD_KEY', variable: 'NVD_KEY')]) {
@@ -349,7 +335,7 @@ pipeline {
                             echo "No critical vulnerabilities found in ${env.MICROSERVICE}"
                         }
                     }
-                }
+                }  // ← closes withCredentials
             }
             post {
                 always {
@@ -364,18 +350,15 @@ pipeline {
                     archiveArtifacts artifacts: 'reports/dependency-check-report.json', allowEmptyArchive: true
                 }
             }
-        }
+        }  
 
         stage('Trivy FS Scan') {
             when {
-                expression {
-                    env.MICROSERVICE != null && env.MICROSERVICE != '' &&
-                    !params.SKIP_ALL && !params.SKIP_SCA
-                }
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
             }
             steps {
                 script {
-                    echo "Running Trivy filesystem scan on: app/microservices-demo/src/${env.MICROSERVICE}"
+                    echo "🔍 Running Trivy filesystem scan on: app/microservices-demo/src/${env.MICROSERVICE}"
 
                     def exitCode = sh(
                         script: """
@@ -405,10 +388,7 @@ pipeline {
 
         stage('Hadolint Dockerfile Scan') {
             when {
-                expression {
-                    env.MICROSERVICE != null && env.MICROSERVICE != '' &&
-                    !params.SKIP_ALL && !params.SKIP_IMAGE_SECURITY
-                }
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
             }
             steps {
                 script {
@@ -426,6 +406,7 @@ pipeline {
 
                     if (exitCode != 0) {
                         echo "Hadolint found Dockerfile issues - check hadolint-report.json"
+                        // Use 'error' instead of echo if you want to FAIL the pipeline
                     } else {
                         echo "Dockerfile passed Hadolint checks"
                     }
@@ -437,8 +418,6 @@ pipeline {
                 }
             }
         }
-
-        // ── CORE DELIVERY STAGES (always run — no SKIP guards) ──────────────
 
         stage('Build Docker Image') {
             when {
@@ -483,14 +462,11 @@ pipeline {
 
         stage('Trivy Image Scan') {
             when {
-                expression {
-                    env.MICROSERVICE != null && env.MICROSERVICE != '' &&
-                    !params.SKIP_ALL && !params.SKIP_IMAGE_SECURITY
-                }
+                expression { env.MICROSERVICE != null && env.MICROSERVICE != '' }
             }
             steps {
                 script {
-                    echo "Running Trivy image scan on: ${env.ECR_IMAGE}"
+                    echo "🔍 Running Trivy image scan on: ${env.ECR_IMAGE}"
 
                     def exitCode = sh(
                         script: """
@@ -541,6 +517,7 @@ pipeline {
                             docker push ${env.ECR_IMAGE}
                         """
 
+                        // Only push additional tags if they were set by semver logic
                         if (env.ECR_IMAGE_SHA) {
                             sh "docker push ${env.ECR_IMAGE_SHA}"
                             echo "Pushed SHA tag: ${env.ECR_IMAGE_SHA}"
@@ -638,6 +615,7 @@ pipeline {
                             git fetch --tags
                         """
 
+                        // Calculate next version from existing git tags
                         def latestTag = sh(
                             script: """
                                 git tag --list "${env.MICROSERVICE}/*" \
@@ -679,7 +657,7 @@ pipeline {
                         ╔══════════════════════════════════════════════════════════════╗
                         ║  Pipeline complete
                         ║  Service  : ${env.MICROSERVICE}
-                        ║  Version  : ${env.SEMVER}
+                        ║  Version  : ${env.SEMVER}  (${params.VERSION_BUMP} bump)
                         ║  Git SHA  : ${env.GIT_SHORT}
                         ║  Images pushed to ECR:
                         ║    • ${env.ECR_IMAGE}
@@ -690,14 +668,22 @@ pipeline {
                     }
                 }
             }
+
         }
     }
-
-    post {
+        post {
         always {
             script {
-                // ── FIXED: read from params.SKIP_ALL, not env.SKIP_SCANS ─────
-                def skipScans = params.SKIP_ALL == true
+                // ── Collect stage results ─────────────────────────────────
+                def skipScans = env.SKIP_SCANS == 'true'
+
+                def stageStatus = { String stageName ->
+                    def result = currentBuild.rawBuild.getAction(
+                        org.jenkinsci.plugins.workflow.job.views.FlowGraphAction
+                    )
+                    // Simplified: use env flags we set per stage
+                    return '✅'
+                }
 
                 def scanMode   = skipScans ? 'QUICK MODE (scans skipped)' : 'FULL MODE (all scans ran)'
                 def buildColor = currentBuild.result == 'SUCCESS' ? '#36a64f' :
@@ -761,41 +747,41 @@ pipeline {
         <tr style="background: #f8f9fa;">
           <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">Secret Scanning (Gitleaks)</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? '⏭ Skipped' : (currentBuild.result != 'FAILURE' ? 'No secrets found' : 'Failed')}</td>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? 'SKIP_ALL=true' : 'See gitleaks-report.json'}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? '[skip-scans] flag set' : 'See gitleaks-report.json'}</td>
         </tr>
         <tr style="background: #fff;">
           <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">SAST - SonarQube</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? '⏭ Skipped' : (currentBuild.result != 'FAILURE' ? 'Passed' : 'Failed')}</td>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? 'SKIP_ALL=true' : "Project key: ${microservice}"}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? '[skip-scans] flag set' : "Project key: ${microservice}"}</td>
         </tr>
         <tr style="background: #f8f9fa;">
           <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">SonarQube Quality Gate</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? '⏭ Skipped' : (currentBuild.result != 'FAILURE' ? 'Passed' : 'Failed')}</td>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? 'SKIP_ALL=true' : 'Quality gate evaluated'}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? '[skip-scans] flag set' : 'Quality gate evaluated'}</td>
         </tr>
         <tr style="background: #fff;">
           <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">SCA - OWASP Dependency Check</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? '⏭ Skipped' : (currentBuild.result != 'FAILURE' ? 'CVSS < 8.0' : 'CVSS ≥ 8.0 found')}</td>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? 'SKIP_ALL=true' : 'See dependency-check-report.html'}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? '[skip-scans] flag set' : 'See dependency-check-report.html'}</td>
         </tr>
         <tr style="background: #f8f9fa;">
           <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">Trivy Filesystem Scan</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? '⏭ Skipped' : (currentBuild.result != 'FAILURE' ? 'No HIGH/CRITICAL' : 'Vulnerabilities found')}</td>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? 'SKIP_ALL=true' : 'See trivy-fs-report.json'}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? '[skip-scans] flag set' : 'See trivy-fs-report.json'}</td>
         </tr>
         <tr style="background: #fff;">
           <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">Hadolint Dockerfile Scan</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? '⏭ Skipped' : 'See report'}</td>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? 'SKIP_ALL=true' : 'See hadolint-report.json'}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? '[skip-scans] flag set' : 'See hadolint-report.json'}</td>
         </tr>
         <tr style="background: #f8f9fa;">
           <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">Trivy Image Scan</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? '⏭ Skipped' : (currentBuild.result != 'FAILURE' ? 'No HIGH/CRITICAL' : 'Vulnerabilities found')}</td>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? 'SKIP_ALL=true' : 'See trivy-image-report.json'}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${skipScans ? '[skip-scans] flag set' : 'See trivy-image-report.json'}</td>
         </tr>
         <tr style="background: #fff;">
           <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">Build & Push to ECR</td>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${currentBuild.result == 'SUCCESS' ? '✅ Pushed' : '❌ Failed'}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${currentBuild.result == 'SUCCESS' ? 'Pushed' : 'Failed'}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${ecrImage}</td>
         </tr>
       </tbody>
