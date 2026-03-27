@@ -20,10 +20,9 @@ pipeline {
         booleanParam(name: 'SKIP_UNIT_TESTS',     defaultValue: false, description: 'Skip unit + integration tests')
         booleanParam(name: 'SKIP_SAST',           defaultValue: false, description: 'Skip SAST (Semgrep + SonarQube)')
         booleanParam(name: 'SKIP_SCA',            defaultValue: false, description: 'Skip SCA (OWASP + Trivy FS)')
-        booleanParam(name: 'SKIP_IAC',            defaultValue: false, description: 'Skip IaC scans (Checkov + tfsec)')
         booleanParam(name: 'SKIP_IMAGE_SECURITY', defaultValue: false, description: 'Skip image scans (Trivy Image + Dockle)')
         booleanParam(name: 'SKIP_SBOM',           defaultValue: false, description: 'Skip SBOM (Syft + Grype + License)')
-        booleanParam(name: 'SKIP_POLICY',         defaultValue: false, description: 'Skip Policy-as-Code (Conftest + Kubesec)')
+        booleanParam(name: 'SKIP_POLICY',         defaultValue: false, description: 'Skip Policy-as-Code (Conftest)')
         booleanParam(name: 'SKIP_SIGN',           defaultValue: false, description: 'Skip image signing (Cosign)')
         booleanParam(name: 'SKIP_DAST',           defaultValue: false, description: 'Skip DAST ZAP (staging-targeted only)')
     }
